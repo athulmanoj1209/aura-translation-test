@@ -1,0 +1,209 @@
+<div class="add-user-content">
+   <p-toast></p-toast>
+  <!-- ============================= HEADER ============================= -->
+  <div class="drawer-header">
+    <div class="drawer-header-left">
+      <div class="drawer-icon-wrap">
+        <app-draw-icon icon="pi pi-file-edit"></app-draw-icon>
+      </div>
+      <div class="drawer-title-block">
+        <h2 class="drawer-title">{{ headerTitle }}</h2>
+        <p class="drawer-subtitle">{{ headerSubtitle }}</p>
+      </div>
+    </div>
+    <button type="button" class="close-btn" (click)="onCancel()" aria-label="Close">
+      <app-draw-icon icon="pi pi-times"></app-draw-icon>
+    </button>
+  </div>
+
+  <!-- ============================= BODY =============================== -->
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate class="drawer-body">
+    <div class="form-grid">
+
+      <!-- Title -->
+      <div class="form-field form-field--full">
+        <label for="title" class="form-label">Title *</label>
+        <input pInputText id="title" formControlName="title"
+               placeholder="Enter finding title"
+               [invalid]="isInvalid('title')" />
+        <small *ngIf="getError('title', 'Title') as err" class="error-text">{{ err }}</small>
+      </div>
+       <!-- Company  -->
+      <div class="form-field">
+        <label class="form-label">Company *</label>
+        <p-select formControlName="company"
+                  [options]="companyOptions()" optionLabel="label" optionValue="value"
+                  placeholder="Select company" [invalid]="isInvalid('company')"
+                  styleClass="w-full"></p-select>
+        <small *ngIf="getError('company','Company') as err" class="error-text">{{ err }}</small>
+      </div>
+
+
+       <!-- Division -->
+      <div class="form-field">
+        <label class="form-label">Division *</label>
+        <p-select formControlName="division"
+                  [options]="divisionOptions()" optionLabel="label" optionValue="value"
+                  [placeholder]="form.get('company')?.value ? 'Select division' : 'Select a company first'"
+                  [disabled]="!form.get('company')?.value"
+                  [invalid]="isInvalid('division')"
+                  styleClass="w-full"></p-select>
+        <small *ngIf="getError('division','Division') as err" class="error-text">{{ err }}</small>
+      </div>
+      <!-- Subdivision -->
+      <div class="form-field">
+        <label for="subdivision" class="form-label">Subdivision{{ divisionHasSubDivision() ? ' *' : '' }}</label>
+        <p-select id="subdivision" formControlName="subdivision"
+                  [options]="subdivisionOptions()" optionLabel="label" optionValue="value"
+                  [placeholder]="!form.get('division')?.value ? 'Select a division first'
+                                 : divisionHasSubDivision() ? 'Select subdivision' : 'No subdivisions for this division'"
+                  [disabled]="!form.get('division')?.value || !divisionHasSubDivision()"
+                  [invalid]="isInvalid('subdivision')"
+                  styleClass="w-full"></p-select>
+        <small *ngIf="getError('subdivision', 'Subdivision') as err" class="error-text">{{ err }}</small>
+      </div>
+ <!-- Scope -->
+      <div class="form-field">
+        <label for="scope" class="form-label">Scope *</label>
+        <p-select id="scope" formControlName="scope"
+                  [options]="scopeOptions()" optionLabel="label" optionValue="value"
+                  [placeholder]="scopeSelectable() ? 'Select scope' : 'Select a subdivision first'"
+                  [disabled]="!scopeSelectable()"
+                  [invalid]="isInvalid('scope')"
+                  styleClass="w-full"></p-select>
+        <small *ngIf="getError('scope', 'Scope') as err" class="error-text">{{ err }}</small>
+      </div>
+
+      <!-- Subscope (optional when the selected scope has no sub-scopes defined) -->
+      <div class="form-field">
+        <label for="subscope" class="form-label">Subscope</label>
+        <p-select id="subscope" formControlName="subscope"
+                  [options]="subscopeOptions()" optionLabel="label" optionValue="value"
+                  [placeholder]="!form.get('scope')?.value ? 'Select a scope first' : (subscopeOptions().length ? 'Select subscope' : 'No sub-scopes for this scope')"
+                  [disabled]="!form.get('scope')?.value || !subscopeOptions().length"
+                  [invalid]="isInvalid('subscope')"
+                  styleClass="w-full"></p-select>
+        <small *ngIf="getError('subscope', 'Subscope') as err" class="error-text">{{ err }}</small>
+      </div>
+      <!-- Task -->
+ <div class="form-field">
+        <label class="form-label">Task *</label>
+        <p-select formControlName="taskId"
+                  [options]="taskOptions()" optionLabel="label" optionValue="value"
+                  [placeholder]="!form.get('scope')?.value ? 'Select a scope first' : 'Select task'"
+                  [disabled]="!form.get('scope')?.value"
+                  [invalid]="isInvalid('taskId')"
+                  styleClass="w-full"></p-select>
+        <small *ngIf="getError('taskId','Task') as err" class="error-text">{{ err }}</small>
+      </div>
+       <!-- Severity -->
+      <div class="form-field">
+        <label for="severity" class="form-label">Severity *</label>
+        <p-select id="severity" formControlName="severity"
+                  [options]="severityOptions" optionLabel="label" optionValue="value"
+                  placeholder="Select severity"
+                  [invalid]="isInvalid('severity')"
+                  styleClass="w-full"></p-select>
+        <small *ngIf="getError('severity', 'Severity') as err" class="error-text">{{ err }}</small>
+      </div>
+
+
+      <!-- Risk -->
+      <div class="form-field">
+        <label for="risk" class="form-label">Risk *</label>
+        <p-select id="risk" formControlName="risk"
+                  [options]="riskOptions" optionLabel="label" optionValue="value"
+                  placeholder="Select risk"
+                  [invalid]="isInvalid('risk')"
+                  styleClass="w-full"></p-select>
+        <small *ngIf="getError('risk', 'Risk') as err" class="error-text">{{ err }}</small>
+      </div>
+
+<!-- Linked Observation -->
+      <div class="form-field form-field--full">
+        <label class="form-label">Linked Observation</label>
+        <p-multiSelect formControlName="observationIds" [options]="observationOptions"
+                       optionLabel="label" optionValue="value"
+                       placeholder="Select supporting Observation"
+                       display="chip" [showHeader]="false"
+                       styleClass="w-full"></p-multiSelect>
+      </div>
+
+
+
+
+            <!-- Description -->
+      <div class="form-field form-field--full">
+        <label for="description" class="form-label">Description</label>
+        <textarea pTextarea id="description" formControlName="description"
+                  placeholder="Describe the finding..."
+                  [autoResize]="true"
+                  rows="6"
+                  [class.ng-invalid]="isInvalid('description')"
+                  [class.ng-touched]="isInvalid('description')"></textarea>
+        <small *ngIf="getError('description', 'Description') as err" class="error-text">{{ err }}</small>
+      </div>
+
+          <!-- Documents Upload -->
+      <div class="form-field form-field--full">
+        <label class="form-label">Supporting Documents</label>
+
+        <!-- Hidden PrimeNG uploader — used only for drag-drop + file-picker -->
+        <p-fileupload
+          #fileUploader
+          mode="advanced"
+          [multiple]="true"
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.png,.jpg,.jpeg"
+          [maxFileSize]="10000000"
+          [auto]="false"
+          [customUpload]="true"
+          (onSelect)="onFilesSelected($event)"
+          styleClass="custom-fileupload"
+          [showUploadButton]="false"
+          [showCancelButton]="false">
+          <ng-template pTemplate="content">
+            <div class="upload-drop-zone">
+              <div class="upload-drop-zone__icon-wrap">
+                <app-draw-icon icon="pi pi-cloud-upload"></app-draw-icon>
+              </div>
+              <p class="upload-drop-zone__title">Drag &amp; drop files here</p>
+              <span class="upload-drop-zone__or">or</span>
+              <button type="button" class="upload-browse-btn" (click)="fileUploader.choose()">
+                <app-draw-icon icon="pi pi-upload"></app-draw-icon> Browse files
+              </button>
+              <p class="upload-drop-zone__hint">Supports PDF, Word, Excel, PowerPoint, Images (Max 10MB)</p>
+            </div>
+          </ng-template>
+        </p-fileupload>
+
+        <!-- File list -->
+        <ul *ngIf="uploadedFiles.length > 0" class="file-list">
+          <li *ngFor="let file of uploadedFiles; let i = index" class="file-list__item">
+            <app-draw-icon icon="pi pi-file" class="file-list__icon"></app-draw-icon>
+            <span class="file-list__name">{{ file.name }}</span>
+            <span class="file-list__size">{{ formatFileSize(file.size) }}</span>
+            <button type="button" class="file-list__remove" (click)="removeFile(i)" aria-label="Remove file">
+              <app-draw-icon icon="pi pi-times"></app-draw-icon>
+            </button>
+          </li>
+        </ul>
+      </div>
+
+
+
+    </div>
+
+
+
+  <!-- ============================ FOOTER ============================ -->
+    <div class="drawer-footer">
+      <p-button label="Cancel"
+                styleClass="p-button-secondary cancel-btn"
+                (onClick)="onCancel()" type="button"></p-button>
+
+      <p-button [label]="submitLabel"
+                styleClass="submit-btn"
+                type="submit"></p-button>
+    </div>
+     </form>
+</div>

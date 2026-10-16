@@ -1,0 +1,183 @@
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
+import { TooltipModule } from 'primeng/tooltip';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { DialogModule } from 'primeng/dialog';
+import { ToastModule } from 'primeng/toast';
+import { ConfirmationService, MessageService } from 'primeng/api';
+
+import {
+  EvidenceType,
+  MOCK_EVIDENCE_TYPES,
+} from '@/app/features/admin/look-up/evidence-type/models/evidence-type.model';  // ← adjust path
+import { ConfirmActionDialogComponent } from '@/app/shared/components/confirm-action-dialog/confirm-action-dialog.component';
+import { EvidenceTypeFormComponent } from '../evidence-type.component';
+import { PaginationBarComponent } from '@/app/shared/components/pagination-bar/pagination-bar.component';
+import { DrawIconComponent } from '@/app/shared/components/draw-icon/draw-icon.component';
+
+
+@Component({
+  selector: 'app-evidence-type-list',
+  standalone: true,
+  imports: [
+    ConfirmActionDialogComponent,
+    CommonModule, FormsModule, ButtonModule, InputTextModule, TooltipModule, ConfirmDialogModule, DialogModule,
+    ToastModule, EvidenceTypeFormComponent,
+    PaginationBarComponent,
+  
+    DrawIconComponent,],
+  providers: [ConfirmationService, MessageService],
+  templateUrl: './evidence-type-list.component.html',
+  styleUrls: ['./evidence-type-list.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class EvidenceTypeListComponent implements OnInit {
+
+  private readonly confirmationService = inject(ConfirmationService);
+  private readonly messageService      = inject(MessageService);
+
+  items        = signal<EvidenceType[]>([]);
+  searchQuery  = signal('');
+  sortField   = signal<string>('name');
+  sortDir     = signal<'asc' | 'desc'>('asc');
+
+  // ── Pagination ─────────────────────────────────────────────────────────────
+  readonly pageSize    = signal(10);
+  readonly currentPage = signal(1);
+
+  /** Options for the "items per page" dropdown in the pagination footer. */
+  readonly pageSizeOptions: number[] = [10, 25, 50, 100];
+
+  showDialog  = signal(false);
+  editingItem = signal<EvidenceType | null>(null);
+
+  showView  = signal(false);
+  viewItem  = signal<EvidenceType | null>(null);
+
+  displayConfirmation = signal(false);
+  confirmationAction  = signal<'Activate' | 'Deactivate'>('Deactivate');
+  confirmationTarget  = signal<EvidenceType | null>(null);
+
+
+  readonly filtered = computed(() => {
+    let list = [...this.items()];
+    const q = this.searchQuery().toLowerCase().trim();
+    if (q) list = list.filter(i => i.name.toLowerCase().includes(q) || i.description?.toLowerCase().includes(q));
+    const field = this.sortField();
+    const dir   = this.sortDir() === 'asc' ? 1 : -1;
+    list.sort((a: any, b: any) => {
+      if (field === 'createdAt') return dir * (+new Date(a.createdAt) - +new Date(b.createdAt));
+      return dir * String(a.name).localeCompare(String(b.name));
+    });
+    return list;
+  });
+
+  /** The current page slice. */
+  readonly paginated = computed(() => {
+    const all  = this.filtered();
+    const size = this.pageSize();
+    const max  = Math.max(1, Math.ceil(all.length / size));
+    const page = Math.min(this.currentPage(), max);
+    return all.slice((page - 1) * size, page * size);
+  });
+
+  ngOnInit(): void { this.items.set(MOCK_EVIDENCE_TYPES); }
+
+  openAdd(): void { this.editingItem.set(null); this.showDialog.set(true); }
+
+  openEdit(item: EvidenceType, e: MouseEvent): void {
+    e.stopPropagation(); this.editingItem.set(item); this.showDialog.set(true);
+  }
+
+  onFormSave(results: EvidenceType[]): void {
+    if (this.editingItem()) {
+      const result = results[0];
+      this.items.update(list => list.map(i => i.id === result.id ? result : i));
+    //  this.messageService.add({ severity: 'success', summary: 'Updated', detail: `"${result.name}" updated.` });
+    } else {
+      this.items.update(list => [...results, ...list]);
+      const detail = results.length === 1 ? `"${results[0].name}" added.` : `${results.length} evidence types added.`;
+    //  this.messageService.add({ severity: 'success', summary: 'Created', detail });
+    }
+    this.showDialog.set(false);
+  }
+
+  onFormClose(): void { this.showDialog.set(false); }
+
+  openView(item: EvidenceType, e: MouseEvent): void {
+    e.stopPropagation(); this.viewItem.set(item); this.showView.set(true);
+  }
+
+  closeView(): void { this.showView.set(false); }
+
+  promptToggle(item: EvidenceType, e: MouseEvent): void {
+    e.stopPropagation();
+    this.confirmationTarget.set(item);
+    this.confirmationAction.set(item.isActive ? 'Deactivate' : 'Activate');
+    this.displayConfirmation.set(true);
+  }
+
+  closeConfirmation(): void { this.displayConfirmation.set(false); }
+
+  confirmToggleBlocked(): void {
+    const target = this.confirmationTarget();
+    if (!target) return;
+    const updated: EvidenceType = { ...target, isActive: !target.isActive, updatedAt: new Date() };
+    this.items.update(list => list.map(i => i.id === updated.id ? updated : i));
+    const label = updated.isActive ? 'Activated' : 'Deactivated';
+    this.messageService.add({ severity: 'success', summary: label, detail: `"${updated.name}" ${label.toLowerCase()}.` });
+    this.displayConfirmation.set(false);
+  }
+
+  confirmDelete(item: EvidenceType, e: MouseEvent): void {
+    e.stopPropagation();
+    this.confirmationService.confirm({
+      target: e.target as EventTarget,
+      message: `Delete "${item.name}"? This cannot be undone.`,
+      icon: 'pi pi-exclamation-triangle',
+      acceptButtonStyleClass: 'p-button-danger p-button-sm',
+      rejectButtonStyleClass: 'p-button-text p-button-sm',
+      accept: () => {
+        this.items.update(list => list.filter(i => i.id !== item.id));
+        this.messageService.add({ severity: 'info', summary: 'Deleted', detail: `"${item.name}" removed.` });
+      },
+    });
+  }
+
+  onSearch(val: string): void                { this.searchQuery.set(val); this.currentPage.set(1); }
+  toggleSort(field: string): void {
+    if (this.sortField() === field) {
+      this.sortDir.update(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      this.sortField.set(field);
+      this.sortDir.set('asc');
+    }
+  }
+
+  /** <app-pagination-bar> emits a zero-based page index. */
+  onPageChange(page: number): void {
+    this.currentPage.set(page + 1);
+  }
+
+  /** Called when the "items per page" dropdown changes. Resets to page 1
+   *  so the visible slice stays consistent with the new page size. */
+  onPageSizeChange(size: number): void {
+    this.pageSize.set(size);
+    this.currentPage.set(1);
+  }
+
+  formatDate(d: Date): string {
+    return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+}

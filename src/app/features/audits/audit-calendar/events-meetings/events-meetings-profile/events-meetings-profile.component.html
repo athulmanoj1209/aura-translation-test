@@ -1,0 +1,221 @@
+@if (e(); as ev) {
+<div class="drawer-inner">
+
+  <!-- Header -->
+  <div class="drawer-header">
+    <div class="drawer-header-left">
+      <div class="drawer-icon-wrap">
+        <app-draw-icon icon="pi pi-calendar"></app-draw-icon>
+      </div>
+      <div class="drawer-title-block">
+        <h2 class="drawer-title">{{ ev.title }}</h2>
+        <p class="drawer-subtitle">EV-{{ ev.id?.slice(-4)?.toUpperCase() || '—' }} · {{ formatDateOnly(ev.startDateTime) }}</p>
+      </div>
+    </div>
+    <button class="close-btn" pTooltip="Close" tooltipPosition="bottom" (click)="onClose()">
+      <app-draw-icon icon="pi pi-times"></app-draw-icon>
+    </button>
+  </div>
+
+  <!-- ═══════════════ SCROLLABLE BODY ═══════════════ -->
+  <div class="drawer-body">
+
+    <!-- ── stat cards (overlap the hero) ── -->
+    <div class="stat-grid">
+      <div class="stat-card">
+        <span class="stat-ic stat-ic--mint"><app-draw-icon icon="pi pi-hourglass"></app-draw-icon></span>
+        <div class="stat-txt">
+          <span class="stat-num">{{ durationLabel() || '—' }}</span>
+          <span class="stat-lbl">Duration</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-ic stat-ic--violet"><app-draw-icon icon="pi pi-users"></app-draw-icon></span>
+        <div class="stat-txt">
+          <span class="stat-num">{{ ev.participants?.length || 0 }}</span>
+          <span class="stat-lbl">Participants</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-ic" [ngClass]="ev.locationType === LocationType.Virtual ? 'stat-ic--blue' : 'stat-ic--amber'">
+          <i class="pi" [ngClass]="ev.locationType === LocationType.Virtual ? 'pi-video' : 'pi-building'"></i>
+        </span>
+        <div class="stat-txt">
+          <span class="stat-num">{{ ev.locationType === LocationType.Virtual ? 'Virtual' : 'Physical' }}</span>
+          <span class="stat-lbl">Location</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-ic stat-ic--teal"><app-draw-icon icon="pi pi-paperclip"></app-draw-icon></span>
+        <div class="stat-txt">
+          <span class="stat-num">{{ ev.attachments?.length || 0 }}</span>
+          <span class="stat-lbl">Attachments</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ BASIC INFORMATION ═══════════════ -->
+    <div class="sec-card">
+      <div class="sec-head">
+        <span class="sec-ic sec-ic--blue"><app-draw-icon icon="pi pi-info-circle"></app-draw-icon></span>
+        <h3>Basic Information</h3>
+      </div>
+
+      <div class="kv-grid">
+        <div class="kv">
+          <span class="kv__k">Event ID</span>
+          <span class="kv__v"><strong>EV-{{ ev.id?.slice(-4)?.toUpperCase() || '—' }}</strong></span>
+        </div>
+        <div class="kv">
+          <span class="kv__k">Event Type</span>
+          <span class="kv__v"><span class="type-badge" [ngClass]="typeBadgeClass()">{{ ev.eventType }}</span></span>
+        </div>
+        <div class="kv">
+          <span class="kv__k">Start Time</span>
+          <span class="kv__v"><app-draw-icon icon="pi pi-calendar-plus" class="kv-ic"></app-draw-icon>{{ formatDateTime(ev.startDateTime) }}</span>
+        </div>
+        <div class="kv">
+          <span class="kv__k">End Time</span>
+          <span class="kv__v"><app-draw-icon icon="pi pi-calendar-minus" class="kv-ic"></app-draw-icon>{{ formatDateTime(ev.endDateTime) }}</span>
+        </div>
+        @if (durationLabel()) {
+          <div class="kv">
+            <span class="kv__k">Duration</span>
+            <span class="kv__v kv__v--accent"><app-draw-icon icon="pi pi-hourglass" class="kv-ic"></app-draw-icon>{{ durationLabel() }}</span>
+          </div>
+        }
+        <div class="kv">
+          <span class="kv__k">Location Type</span>
+          <span class="kv__v">
+            <span class="loc-badge" [class.loc-badge--virtual]="ev.locationType === LocationType.Virtual">
+              @if (ev.locationType === LocationType.Virtual) {
+                <app-draw-icon icon="pi pi-video"></app-draw-icon> Virtual
+              } @else {
+                <app-draw-icon icon="pi pi-building"></app-draw-icon> Physical
+              }
+            </span>
+          </span>
+        </div>
+        @if (ev.locationDetail) {
+          <div class="kv kv--full">
+            <span class="kv__k">{{ ev.locationType === LocationType.Virtual ? 'Meeting Link' : 'Address' }}</span>
+            <span class="kv__v">
+              @if (ev.locationType === LocationType.Virtual) {
+                <a class="ep-link" [href]="ev.locationDetail" target="_blank">
+                  <app-draw-icon icon="pi pi-external-link"></app-draw-icon>{{ ev.locationDetail }}
+                </a>
+              } @else {
+                <span><app-draw-icon icon="pi pi-map-marker" class="kv-ic"></app-draw-icon>{{ ev.locationDetail }}</span>
+              }
+            </span>
+          </div>
+        }
+        <div class="kv">
+          <span class="kv__k">Created</span>
+          <span class="kv__v">{{ ev.createdAt ? formatDateOnly(ev.createdAt) : '—' }}</span>
+        </div>
+        <div class="kv">
+          <span class="kv__k">Last Updated</span>
+          <span class="kv__v">{{ ev.updatedAt ? formatDateOnly(ev.updatedAt) : '—' }}</span>
+        </div>
+      </div>
+
+      @if (ev.description) {
+        <div class="notes">
+          <span class="notes__k"><app-draw-icon icon="pi pi-align-left"></app-draw-icon> Description</span>
+          <p class="notes__v">{{ ev.description }}</p>
+        </div>
+      }
+    </div>
+
+    <!-- ═══════════════ PEOPLE (organizer + participants) ═══════════════ -->
+    <div class="sec-card">
+      <div class="sec-head">
+        <span class="sec-ic sec-ic--violet"><app-draw-icon icon="pi pi-users"></app-draw-icon></span>
+        <h3>People</h3>
+        <span class="sec-count">{{ 1 + (ev.participants?.length || 0) }}</span>
+      </div>
+
+      <!-- organizer — highlighted primary card -->
+      <div class="primary-card">
+        <span class="primary-card__avatar">{{ organizerInitials() }}</span>
+        <div class="primary-card__text">
+          <span class="primary-card__eyebrow">Organizer</span>
+          <span class="primary-card__name">{{ ev.organizer.name }}</span>
+          <span class="primary-card__role">{{ ev.organizer.email }}</span>
+        </div>
+        <span class="member-badge member-badge--organizer"><app-draw-icon icon="pi pi-star"></app-draw-icon> Organizer</span>
+      </div>
+
+      @if (ev.participants && ev.participants.length > 0) {
+        <div class="member-rows">
+          @for (p of ev.participants; track p.id) {
+            <div class="member-row" [pTooltip]="p.email" tooltipPosition="left">
+              <span class="member-row__avatar">{{ participantInitials(p.name) }}</span>
+              <div class="member-row__text">
+                <span class="member-row__name">{{ p.name }}</span>
+                <span class="member-row__role">{{ p.email }}</span>
+              </div>
+              <span class="member-badge member-badge--participant"><app-draw-icon icon="pi pi-user"></app-draw-icon> Participant</span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- ═══════════════ LINKED ITEMS ═══════════════ -->
+    @if (ev.linkedEntities && ev.linkedEntities.length > 0) {
+      <div class="sec-card">
+        <div class="sec-head">
+          <span class="sec-ic sec-ic--indigo"><app-draw-icon icon="pi pi-link"></app-draw-icon></span>
+          <h3>Linked Items</h3>
+          <span class="sec-count">{{ ev.linkedEntities.length }}</span>
+        </div>
+
+        <div class="linked-rows">
+          @for (item of ev.linkedEntities; track item.id) {
+            <div class="linked-row">
+              <span class="linked-row__type">{{ item.type }}</span>
+              <span class="linked-row__name">{{ item.label }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- ═══════════════ ATTACHMENTS ═══════════════ -->
+    @if (ev.attachments && ev.attachments.length > 0) {
+      <div class="sec-card">
+        <div class="sec-head">
+          <span class="sec-ic sec-ic--teal"><app-draw-icon icon="pi pi-paperclip"></app-draw-icon></span>
+          <h3>Attachments</h3>
+          <span class="sec-count">{{ ev.attachments.length }}</span>
+        </div>
+
+        <div class="file-rows">
+          @for (file of ev.attachments; track file.id) {
+            <div class="file-row">
+              <div class="file-row__icon"><app-draw-icon icon="pi pi-file"></app-draw-icon></div>
+              <div class="file-row__info">
+                <span class="file-row__name">{{ file.name }}</span>
+                @if (file.size) {
+                  <span class="file-row__size">{{ formatFileSize(file.size) }}</span>
+                }
+              </div>
+              <button type="button" class="file-row__dl" pTooltip="Download" tooltipPosition="top">
+                <app-draw-icon icon="pi pi-download"></app-draw-icon>
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+  </div>
+</div>
+} @else {
+  <div class="ep-loading">
+    <app-draw-icon icon="pi pi-spin pi-spinner"></app-draw-icon>
+    <span>Loading event…</span>
+  </div>
+}

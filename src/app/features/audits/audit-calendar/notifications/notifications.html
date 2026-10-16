@@ -1,0 +1,215 @@
+<div class="notif-page">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="page-header__top">
+      <div class="page-title-block">
+        <div class="page-title-row">
+          <h2 class="page-title">Notifications</h2>
+          <span class="portal-badge">{{ userRole === 'auditor' ? 'Auditor View' : 'Client View' }}</span>
+        </div>
+        <p class="page-subtitle">View and manage system and user-generated audit notifications</p>
+      </div>
+      <div class="page-header__actions">
+        <!-- View toggle -->
+        <div class="view-toggle" role="group" aria-label="View mode">
+          <button type="button" class="view-toggle__btn" [class.is-active]="viewMode === 'grid'"
+            (click)="viewMode = 'grid'" aria-label="Grid view">
+            <app-draw-icon icon="pi pi-th-large"></app-draw-icon>
+          </button>
+          <button type="button" class="view-toggle__btn" [class.is-active]="viewMode === 'list'"
+            (click)="viewMode = 'list'" aria-label="List view">
+            <app-draw-icon icon="pi pi-list"></app-draw-icon>
+          </button>
+        </div>
+
+      </div>
+    </div>
+    <div class="page-header__filters">
+      <span class="p-input-icon-left search-wrapper page-header__search relative">
+        <app-draw-icon icon="pi pi-search" class="left-3 top-[15.1px] absolute"></app-draw-icon>
+        <input pInputText type="text" placeholder="Search by subject, sender or message…" [(ngModel)]="searchQuery"
+          class="search-input" />
+      </span>
+    </div>
+  </div>
+
+  <!-- ── LIST VIEW ─────────────────────────────────────────────── -->
+  @if (viewMode === 'list') {
+  <div class="table-card">
+    <p-table [value]="filteredNotifications" [paginator]="true" [rows]="pageSize" [showCurrentPageReport]="false"
+      [showFirstLastIcon]="false"
+      [rowsPerPageOptions]="[10, 25, 50]" sortMode="single" styleClass="notif-table"
+      [tableStyle]="{'min-width':'100%'}">
+
+      <ng-template pTemplate="header">
+        <tr>
+          <th class="col-index">#</th>
+          <th pSortableColumn="subject" class="col-subject">Notification Subject <p-sortIcon
+              field="subject"></p-sortIcon></th>
+          <th pSortableColumn="sender" class="col-sender">Sender <p-sortIcon field="sender"></p-sortIcon></th>
+          <th pSortableColumn="dateTime" class="col-datetime">Date & Time <p-sortIcon field="dateTime"></p-sortIcon>
+          </th>
+          <th class="col-actions">Actions</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-notif let-rowIndex="rowIndex">
+        <tr>
+          <td class="col-index">
+            <span class="row-idx">{{ rowIndex + 1 }}</span>
+          </td>
+          <td class="col-subject">
+            <div class="subject-col">
+              <span class="subject-text">{{ notif.subject }}</span>
+              <span class="msg-text">{{ truncate(notif.message, 110) }}</span>
+            </div>
+          </td>
+          <td class="col-sender">
+            <div class="sender-col">
+              <span class="sender-avatar" [class.sender-avatar-system]="notif.senderType === 'system'">
+                {{ initials(notif.sender) }}
+              </span>
+              <div class="sender-info">
+                <span class="sender-name">{{ notif.sender }}</span>
+                @if (notif.senderType === 'system') {
+                <span class="system-badge"><app-draw-icon icon="pi pi-bolt"></app-draw-icon>System</span>
+                } @else if (notif.senderRole) {
+                <span class="role-badge"><app-draw-icon icon="pi pi-id-card"></app-draw-icon>{{ notif.senderRole }}</span>
+                }
+              </div>
+            </div>
+          </td>
+          <td class="col-datetime">
+            <span class="datetime-text">{{ notif.dateTime }}</span>
+          </td>
+          <td class="col-actions">
+            <div class="action-btns">
+              <button type="button" class="act-btn act-view" (click)="viewNotification(notif)" pTooltip="View"
+                tooltipPosition="top">
+                <app-draw-icon icon="pi pi-eye"></app-draw-icon>
+              </button>
+              <button type="button" class="act-btn act-delete" (click)="openConfirm(notif)" pTooltip="Delete"
+                tooltipPosition="top">
+                <app-draw-icon icon="pi pi-trash"></app-draw-icon>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="5">
+            <div class="empty-state">
+              <app-draw-icon icon="pi pi-bell" class="empty-icon"></app-draw-icon>
+              <h3>No notifications found</h3>
+              <p>Try adjusting your search criteria.</p>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="paginatorleft" let-state>
+        <span class="pagination-info">
+          Showing {{ state.totalRecords > 0 ? state.first + 1 : 0 }} to {{ (state.first + state.rows) < state.totalRecords ? (state.first + state.rows) : state.totalRecords }} of {{ state.totalRecords }} entries
+        </span>
+      </ng-template>
+
+    </p-table>
+  </div>
+  }
+
+  <!-- ── GRID VIEW ──────────────────────────────────────────────── -->
+  @if (viewMode === 'grid') {
+  <div class="grid-view">
+    @for (notif of filteredNotifications; track notif.id) {
+    <div class="notif-card">
+      <div class="nc-subject">{{ notif.subject }}</div>
+      <div class="nc-message">{{ truncate(notif.message, 130) }}</div>
+      <div class="nc-meta">
+        <div class="nc-sender-row">
+          <span class="nc-avatar" [class.nc-avatar-system]="notif.senderType === 'system'">
+            {{ initials(notif.sender) }}
+          </span>
+          <div class="nc-sender-details">
+            <span class="nc-sender-name">{{ notif.sender }}</span>
+            @if (notif.senderType === 'system') {
+            <span class="nc-system-badge"><app-draw-icon icon="pi pi-bolt"></app-draw-icon>System</span>
+            } @else if (notif.senderRole) {
+            <span class="nc-role-badge"><app-draw-icon icon="pi pi-id-card"></app-draw-icon>{{ notif.senderRole }}</span>
+            }
+          </div>
+        </div>
+        <span class="nc-datetime">
+          <app-draw-icon icon="pi pi-clock"></app-draw-icon>{{ notif.dateTime }}
+        </span>
+      </div>
+      <div class="nc-footer">
+        <div class="action-btns">
+          <button type="button" class="act-btn act-view" (click)="viewNotification(notif)" pTooltip="View"
+            tooltipPosition="top">
+            <app-draw-icon icon="pi pi-eye"></app-draw-icon>
+          </button>
+          <button type="button" class="act-btn act-delete" (click)="openConfirm(notif)" pTooltip="Delete"
+            tooltipPosition="top">
+            <app-draw-icon icon="pi pi-trash"></app-draw-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+    } @empty {
+    <div class="empty-grid">
+      <app-draw-icon icon="pi pi-bell" class="empty-icon"></app-draw-icon>
+      <h3>No notifications found</h3>
+      <p>Try adjusting your search criteria.</p>
+    </div>
+    }
+  </div>
+  }
+
+</div>
+
+<!-- ── View Dialog ─────────────────────────────────────────────── -->
+<p-dialog [(visible)]="showViewDialog" [modal]="true" [draggable]="false" [resizable]="false" [closable]="false"
+  [showHeader]="false" [style]="{ width: '560px', padding: '0' }" styleClass="no-pad-dialog">
+  @if (viewingItem) {
+  <div class="vd-root">
+    <div class="vd-header">
+      <div class="vd-icon"><app-draw-icon icon="pi pi-bell"></app-draw-icon></div>
+      <div class="vd-header-text">
+        <span class="vd-subject">{{ viewingItem.subject }}</span>
+        <span class="vd-subtitle">Notification Details</span>
+      </div>
+      <button class="vd-close" type="button" (click)="showViewDialog = false">
+        <app-draw-icon icon="pi pi-times"></app-draw-icon>
+      </button>
+    </div>
+    <div class="vd-body">
+      <div class="vd-section-label"><app-draw-icon icon="pi pi-align-justify"></app-draw-icon> MESSAGE</div>
+      <div class="vd-message-card">{{ viewingItem.message }}</div>
+      <div class="vd-info-row">
+        <span class="vd-info-label"><app-draw-icon icon="pi pi-user"></app-draw-icon> SENDER</span>
+        <span class="vd-sender-value">
+          {{ viewingItem.sender }}
+          @if (viewingItem.senderType === 'system') {
+          <span class="vd-system-badge"><app-draw-icon icon="pi pi-bolt"></app-draw-icon>System</span>
+          } @else if (viewingItem.senderRole) {
+          <span class="vd-role-badge"><app-draw-icon icon="pi pi-id-card"></app-draw-icon>{{ viewingItem.senderRole }}</span>
+          }
+        </span>
+      </div>
+      <div class="vd-info-row">
+        <span class="vd-info-label"><app-draw-icon icon="pi pi-calendar-plus"></app-draw-icon> DATE & TIME</span>
+        <span class="vd-info-value">{{ viewingItem.dateTime }}</span>
+      </div>
+    </div>
+  </div>
+  }
+</p-dialog>
+
+<!-- ── Confirm Dialog ──────────────────────────────────────────── -->
+<app-confirm-action-dialog [visible]="showConfirmDialog"
+  action="Delete"
+  [itemName]="confirmTarget?.name ?? ''" (confirmed)="confirmDelete()" (cancelled)="closeConfirm()">
+</app-confirm-action-dialog>

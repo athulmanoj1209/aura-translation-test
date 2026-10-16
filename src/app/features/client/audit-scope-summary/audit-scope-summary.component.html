@@ -1,0 +1,325 @@
+<div class="csl-wrapper">
+
+  <!-- ─── Page Header ───────────────────────────────────────────────────── -->
+  <div class="csl-header">
+    <div class="csl-header-left">
+      <div class="csl-header-icon">
+        <app-draw-icon icon="pi pi-file-check"></app-draw-icon>
+      </div>
+      <div>
+        <h1 class="csl-title">{{ pageTitle }}</h1>
+        <p class="csl-subtitle">{{ pageSubtitle }}</p>
+      </div>
+    </div>
+    <!-- View toggle -->
+    <div class="csl-view-toggle">
+      <button class="view-toggle-btn" [class.active]="viewMode === 'list'" (click)="viewMode = 'list'" pTooltip="List View" tooltipPosition="bottom">
+        <app-draw-icon icon="pi pi-bars"></app-draw-icon>
+      </button>
+      <button class="view-toggle-btn" [class.active]="viewMode === 'grid'" (click)="viewMode = 'grid'" pTooltip="Grid View" tooltipPosition="bottom">
+        <app-draw-icon icon="pi pi-th-large"></app-draw-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- ─── Role Switcher (Admin / Sub-Division Head) ─────────────────────── -->
+  <div class="csl-role-bar">
+    <span class="csl-role-bar-label">Viewing as</span>
+
+    <div class="csl-role-toggle">
+      <button class="role-toggle-btn" [class.active]="activeRole === 'cfo'" (click)="setRole('cfo')">
+        <i class="pi pi-shield"></i> Admin
+      </button>
+      <button class="role-toggle-btn" [class.active]="activeRole === 'sub-division-head'" (click)="setRole('sub-division-head')">
+        <i class="pi pi-user"></i> Sub-Division Head
+      </button>
+    </div>
+
+    @if (activeRole === 'sub-division-head') {
+      <div class="csl-role-subdivision-wrap">
+        <span class="csl-role-bar-label">Sub-Division</span>
+        <p-select [(ngModel)]="selectedSubDivisionForView" [options]="viewSubDivisionOptions" optionLabel="label" optionValue="value"
+          styleClass="csl-filter-select csl-role-subdivision-select" (onChange)="onViewSubDivisionChange()">
+        </p-select>
+      </div>
+    }
+  </div>
+
+  <!-- ─── Summary Cards (style of screenshot 2) ───────────────────────── -->
+  <!-- Generated from summaryCards (see the .ts getter) instead of one hardcoded block per
+       card, so adding/removing/reordering a card only ever needs a change in one place. -->
+  <div class="csl-summary-row">
+    <div class="summary-card">
+      <div class="summary-card-left">
+        <span class="summary-card-val total-val">{{ totalCount }}</span>
+        <span class="summary-card-label">Total Scopes</span>
+      </div>
+      <div class="summary-card-icon total-icon"><app-draw-icon icon="pi pi-folder-open"></app-draw-icon></div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-card-left">
+        <span class="summary-card-val inprogress-val">{{ inProgressCount }}</span>
+        <span class="summary-card-label">In Progress</span>
+      </div>
+      <div class="summary-card-icon inprogress-icon"><app-draw-icon icon="pi pi-history"></app-draw-icon></div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-card-left">
+        <span class="summary-card-val notstarted-val">{{ notStartedCount }}</span>
+        <span class="summary-card-label">Not Started</span>
+      </div>
+      <div class="summary-card-icon notstarted-icon"><i class="pi pi-clock"></i></div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-card-left">
+        <span class="summary-card-val completed-val">{{ completedCount }}</span>
+        <span class="summary-card-label">Completed</span>
+      </div>
+      <div class="summary-card-icon completed-icon"><i class="pi pi-check-circle"></i></div>
+    </div>
+    
+  </div>
+
+  <!-- ─── Filter Bar ────────────────────────────────────────────────────── -->
+  <div class="csl-filter-bar">
+
+    @if (isCfo) {
+      <p-select [(ngModel)]="filterDivision" [options]="divisionOptions" optionLabel="label" optionValue="value"
+        placeholder="All Divisions" styleClass="csl-filter-select" [showClear]="true" (onChange)="onDivisionChange()">
+      </p-select>
+
+      <div class="csl-subdivision-filter-wrap"
+        [pTooltip]="!isSubDivisionFilterEnabled ? 'Select a division first' : ''" tooltipPosition="bottom">
+        <p-select [(ngModel)]="filterSubDivision" [options]="filteredSubDivisionOptions" optionLabel="label" optionValue="value"
+          placeholder="All Sub-Divisions" styleClass="csl-filter-select" [showClear]="true"
+          [disabled]="!isSubDivisionFilterEnabled" (onChange)="applyFilters()">
+        </p-select>
+      </div>
+    }
+
+    <p-select [(ngModel)]="filterStatus" [options]="statusOptions" optionLabel="label" optionValue="value"
+      placeholder="All Statuses" styleClass="csl-filter-select" [showClear]="true" (onChange)="applyFilters()">
+    </p-select>
+
+    <p-select [(ngModel)]="filterFrequency" [options]="frequencyOptions" optionLabel="label" optionValue="value"
+      placeholder="All Frequencies" styleClass="csl-filter-select" [showClear]="true" (onChange)="applyFilters()">
+    </p-select>
+
+    @if (activeFilterCount > 0) {
+      <button class="csl-clear-btn" (click)="clearFilters()">
+        <app-draw-icon icon="pi pi-times"></app-draw-icon> Clear ({{ activeFilterCount }})
+      </button>
+    }
+    <div class="csl-search-wrap">
+      <app-draw-icon icon="pi pi-search" class="csl-search-icon"></app-draw-icon>
+      <input type="text" class="csl-search-input" placeholder="Search by scope name or objective…"
+        [(ngModel)]="searchQuery" (ngModelChange)="applyFilters()" />
+    </div>
+
+  </div>
+
+  <!-- ─── Empty state ───────────────────────────────────────────────────── -->
+  @if (filteredScopes.length === 0) {
+    <div class="csl-empty">
+      <app-draw-icon icon="pi pi-inbox" class="csl-empty-icon"></app-draw-icon>
+      <p class="csl-empty-title">No scopes found</p>
+      <p class="csl-empty-sub">Try adjusting your filters or search query.</p>
+      @if (activeFilterCount > 0) {
+        <button class="csl-clear-btn" (click)="clearFilters()">Clear all filters</button>
+      }
+    </div>
+  }
+
+  <!-- ─── List View ────────────────────────────────────────────────────── -->
+  @if (viewMode === 'list' && filteredScopes.length > 0) {
+    <div class="csl-list-wrap">
+      <div class="list-header">
+        <span class="list-header__cell col-scope">Scope</span>
+        <span class="list-header__cell col-subdivisions">Sub-Division(s)</span>
+        <span class="list-header__cell col-period">Period</span>
+        <span class="list-header__cell col-auditors">Auditors</span>
+        <span class="list-header__cell col-frequency">Frequency</span>
+        <span class="list-header__cell col-mode">Mode</span>
+        <span class="list-header__cell col-risk">Risk</span>
+        <span class="list-header__cell col-status">Status</span>
+        <span class="list-header__cell col-action">Action</span>
+      </div>
+
+      @for (scope of pagedScopes; track scope.id) {
+        <article class="csl-row" [class.row-inprogress]="scope.status === 'in-progress'" [class.row-completed]="scope.status === 'completed'" [class.row-overdue]="scope.status === 'overdue'">
+
+          <!-- Scope name + objective -->
+          <div class="col-scope">
+            <div class="td-scope-inner">
+              <div class="td-scope-avatar"><app-draw-icon icon="pi pi-file-check"></app-draw-icon></div>
+              <div>
+                <p class="td-scope-name">{{ scope.scopeName }}</p>
+                @if (scope.objective) {
+                  <p class="td-scope-obj">{{ truncate(scope.objective, 60) }}</p>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-Divisions -->
+          <div class="col-subdivisions">
+            <div class="td-subdivision-chips">
+              @for (subDivision of getSubDivisionChips(scope.linkedSubDivisions); track subDivision) {
+                <span class="td-subdivision-tag">{{ subDivision }}</span>
+              }
+            </div>
+          </div>
+
+          <!-- Period -->
+          <div class="col-period">
+            <span class="td-period-start">{{ formatDate(scope.startDate) }}</span>
+            <span class="td-period-sep">–</span>
+            <span class="td-period-end">{{ formatDate(scope.endDate) }}</span>
+          </div>
+
+          <!-- Auditors -->
+          <div class="col-auditors">
+            <div class="td-auditor-list">
+              @for (auditor of getVisibleAuditors(scope); track auditor) {
+                <span class="td-auditor-chip"
+                      [pTooltip]="auditorLabels[auditor] ?? auditor"
+                      tooltipPosition="top">
+                  {{ getInitials(auditorLabels[auditor] ?? auditor) }}
+                </span>
+              }
+              @if (!expandedAuditors.has(scope.id) && scope.assignedAuditors.length > 2) {
+                <button class="td-auditor-more" (click)="toggleAuditors(scope.id); $event.stopPropagation()">
+                  +{{ scope.assignedAuditors.length - 2 }} more
+                </button>
+              }
+              @if (expandedAuditors.has(scope.id) && scope.assignedAuditors.length > 2) {
+                <button class="td-auditor-more td-auditor-less" (click)="toggleAuditors(scope.id); $event.stopPropagation()">
+                  less
+                </button>
+              }
+            </div>
+          </div>
+
+          <!-- Frequency -->
+          <div class="col-frequency td-cell">{{ scope.auditFrequency | titlecase }}</div>
+
+          <!-- Mode -->
+          <div class="col-mode td-cell">{{ modeLabels[scope.modeOfAudit] ?? scope.modeOfAudit }}</div>
+
+          <!-- Risk -->
+          <div class="col-risk">
+            @if (scope.riskRating) {
+              <span class="td-risk-pill" [class]="getRiskClass(scope.riskRating)">
+                <span class="td-risk-dot"></span>
+                {{ scope.riskRating | titlecase }}
+              </span>
+            } @else {
+              <span class="td-na">—</span>
+            }
+          </div>
+
+          <!-- Status -->
+          <div class="col-status">
+            <div class="td-status-wrap">
+              <p-tag [value]="getStatusLabel(scope.status)" [severity]="getStatusSeverity(scope.status)" styleClass="card-status-tag"></p-tag>
+              <!-- @if (scope.status !== 'not-started') {
+                <span class="td-pct">{{ scope.progressPercent }}%</span>
+              } -->
+            </div>
+          </div>
+
+          <!-- Action -->
+          <div class="col-action">
+            <button class="td-view-btn" (click)="viewScope(scope)" pTooltip="View Details" tooltipPosition="left">
+              <app-draw-icon icon="pi pi-eye"></app-draw-icon>
+            </button>
+          </div>
+
+        </article>
+      }
+    </div>
+  }
+
+  <!-- ─── Grid View ─────────────────────────────────────────────────────── -->
+  @if (viewMode === 'grid' && filteredScopes.length > 0) {
+    <div class="csl-grid">
+      @for (scope of pagedScopes; track scope.id) {
+
+        <div class="scope-card" [class.card-in-progress]="scope.status === 'in-progress'" [class.card-completed]="scope.status === 'completed'" [class.card-overdue]="scope.status === 'overdue'">
+
+          <!-- Top bar: status + risk -->
+          <div class="card-topbar">
+            <p-tag [value]="getStatusLabel(scope.status)" [severity]="getStatusSeverity(scope.status)" styleClass="card-status-tag"></p-tag>
+            @if (scope.riskRating) {
+              <span class="card-risk-pill" [class]="getRiskClass(scope.riskRating)">
+                <span class="risk-dot-sm"></span>
+                {{ scope.riskRating | titlecase }} Risk
+              </span>
+            }
+          </div>
+
+          <!-- Title + objective -->
+          <div class="card-body">
+            <h3 class="card-title">{{ scope.scopeName }}</h3>
+            @if (scope.objective) {
+              <p class="card-objective">{{ truncate(scope.objective, 100) }}</p>
+            }
+          </div>
+
+
+
+          <!-- Info pills (no budget, no sub-scope) -->
+          <div class="card-info-pills">
+            <div class="info-item" pTooltip="Period" tooltipPosition="top">
+              <span class="info-icon"><app-draw-icon icon="pi pi-calendar"></app-draw-icon></span>
+              <span class="info-content">{{ formatDate(scope.startDate) }} – {{ formatDate(scope.endDate) }}</span>
+            </div>
+            <div class="info-item" pTooltip="Auditors" tooltipPosition="top">
+              <span class="info-icon"><app-draw-icon icon="pi pi-users"></app-draw-icon></span>
+              <div class="info-content"><span class="info-value">{{ getAuditorCount(scope.assignedAuditors) }}</span></div>
+            </div>
+            <div class="info-item" pTooltip="Audit Mode" tooltipPosition="top">
+              <span class="info-icon"><app-draw-icon icon="pi pi-sliders-h"></app-draw-icon></span>
+              <div class="info-content"><span class="info-value">{{ modeLabels[scope.modeOfAudit] ?? scope.modeOfAudit }}</span></div>
+            </div>
+            <div class="info-item" pTooltip="Frequency" tooltipPosition="top">
+              <span class="info-icon"><app-draw-icon icon="pi pi-refresh"></app-draw-icon></span>
+              <div class="info-pilltent"><span class="info-value">{{ scope.auditFrequency | titlecase }}</span></div>
+            </div>
+          </div>
+
+          @if (scope.objective) {
+            <p class="card-objective">{{ truncate(scope.objective, 100) }}</p>
+          }
+
+          <!-- Footer: sub-divisions + view -->
+          <div class="card-footer">
+            <div class="card-subdivisions">
+              @for (subDivision of getSubDivisionChips(scope.linkedSubDivisions); track subDivision) {
+                <span class="card-subdivision-tag">{{ subDivision }}</span>
+              }
+            </div>
+            <button type="button" class="btn-view" (click)="viewScope(scope)">
+              View
+            </button>
+          </div>
+
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ─── Pagination ────────────────────────────────────────────────────── -->
+  @if (filteredScopes.length > 0) {
+    <app-pagination-bar
+      [pageSize]="pageSize"
+      [totalRecords]="filteredScopes.length"
+      [currentPage]="currentPage - 1"
+      [rowsPerPageOptions]="pageSizeOptions"
+      entityLabel="scopes"
+      (pageChange)="onPageChange($event)"
+      (rowsChange)="onPageSizeChange($event)">
+    </app-pagination-bar>
+  }
+
+</div>

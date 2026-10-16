@@ -1,0 +1,658 @@
+<div class="client-dashboard">
+
+  <!-- ── Page header ─────────────────────────────────────────────────────── -->
+  <div class="dashboard-header">
+    <div class="header-left">
+      <h2 class="page-title">
+        <i class="pi pi-th-large"></i>
+        {{ isCfo ? 'Executive Dashboard' : 'My Audit Dashboard' }}
+      </h2>
+      <span class="header-sub">{{ isCfo ? 'Organisation-wide audit overview' : 'IT Security Assessment' }}</span>
+    </div>
+    <div class="header-right">
+      <p-button
+        icon="pi pi-bell"
+        [badge]="unreadCount > 0 ? unreadCount.toString() : ''"
+        badgeSeverity="danger"
+        [rounded]="true" [text]="true"
+        pTooltip="Notifications" tooltipPosition="bottom" />
+      <p-button icon="pi pi-refresh" [rounded]="true" [text]="true" pTooltip="Refresh" tooltipPosition="bottom" (onClick)="onRefresh()" />
+    </div>
+  </div>
+
+  <!-- ── Viewing as (Admin / Sub-Division Head) ─────────────────────────── -->
+  <div class="viewing-as-bar">
+    <span class="viewing-as-label">Viewing as</span>
+    <div class="viewing-as-toggle">
+      <button type="button" class="viewing-as-btn" [class.active]="isCfo" (click)="setRole('CFO')">
+        <i class="pi pi-shield"></i> Admin
+      </button>
+      <button type="button" class="viewing-as-btn" [class.active]="!isCfo" (click)="setRole('SUB_DIVISION_HEAD')">
+        <i class="pi pi-user"></i> Sub-Division Head
+      </button>
+    </div>
+
+    @if (!isCfo && isInternalAudit) {
+      <div class="viewing-as-sub-division">
+        <span class="viewing-as-label">Sub-Division</span>
+        <p-select [(ngModel)]="selectedSubDivision" [options]="subDivisionOptions"
+          optionLabel="label" optionValue="value" styleClass="viewing-as-sub-division-select"
+          (onChange)="onSubDivisionChange()">
+        </p-select>
+      </div>
+    }
+  </div>
+
+  <!-- ── Tabs ────────────────────────────────────────────────────────────── -->
+  <div class="tab-bar">
+    <button type="button" class="tab-btn" [class.tab-btn--active]="activeTab === '0'" (click)="activeTab = '0'">
+      <app-draw-icon icon="pi pi-th-large"></app-draw-icon> Overview
+    </button>
+    <button type="button" class="tab-btn" [class.tab-btn--active]="activeTab === '1'" (click)="activeTab = '1'">
+      <app-draw-icon icon="pi pi-file-edit"></app-draw-icon> RFIs
+      @if (overdueRfiCount > 0) {
+        <p-badge [value]="overdueRfiCount.toString()" severity="danger" styleClass="tab-badge" />
+      }
+    </button>
+    <button type="button" class="tab-btn" [class.tab-btn--active]="activeTab === '2'" (click)="activeTab = '2'">
+      <app-draw-icon icon="pi pi-list-check"></app-draw-icon> Scope
+    </button>
+    <button type="button" class="tab-btn" [class.tab-btn--active]="activeTab === '3'" (click)="activeTab = '3'">
+      <app-draw-icon icon="pi pi-bell"></app-draw-icon> Notifications &amp; Reports
+      @if (unreadCount > 0) {
+        <p-badge [value]="unreadCount.toString()" severity="danger" styleClass="tab-badge" />
+      }
+    </button>
+  </div>
+
+  <div class="tab-content">
+
+    <!-- ══ Overview ══════════════════════════════════════════════════════ -->
+    @if (activeTab === '0') {
+      <div class="tab-canvas">
+
+      <div class="kpi-grid">
+        @for (kpi of kpis; track kpi.label) {
+          <div class="kpi-card"
+            [class.kpi-clickable]="isKpiClickable(kpi)"
+            [class.kpi-accent--danger]="kpi.subColor === 'danger'"
+            [class.kpi-accent--success]="kpi.subColor === 'success'"
+            [class.kpi-accent--warning]="kpi.subColor === 'warning'"
+            [class.kpi-accent--muted]="kpi.subColor === 'muted'"
+            (click)="onKpiClick(kpi)"
+            (keydown.enter)="onKpiClick(kpi)"
+            (keydown.space)="onKpiClick(kpi)"
+            [attr.role]="isKpiClickable(kpi) ? 'button' : null"
+            [attr.tabindex]="isKpiClickable(kpi) ? 0 : null">
+            <div class="kpi-icon"><app-draw-icon [icon]="kpi.icon" [size]="18"></app-draw-icon></div>
+            <div class="kpi-body">
+              <span class="kpi-label">{{ kpi.label }}</span>
+              <span class="kpi-value">{{ kpi.value }}</span>
+              <span class="kpi-sub"
+                [class.text-danger]="kpi.subColor === 'danger'"
+                [class.text-warning]="kpi.subColor === 'warning'"
+                [class.text-success]="kpi.subColor === 'success'"
+                [class.text-muted]="kpi.subColor === 'muted'">{{ kpi.sub }}</span>
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="audit-charts-grid" [class.has-sub-division-bar]="isCfo">
+
+        <p-card styleClass="dash-card">
+          <ng-template pTemplate="header">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="card-title"><app-draw-icon icon="pi pi-chart-pie"></app-draw-icon> Audit status distribution</span>
+                <span class="card-subtitle">{{ isCfo ? 'All sub-divisions' : 'IT Security Assessment' }}</span>
+              </div>
+            </div>
+          </ng-template>
+          <div class="chart-wrap chart-wrap--pie">
+            <app-donut-status-chart [legend]="auditStatusLegend"></app-donut-status-chart>
+          </div>
+        </p-card>
+
+        @if (isCfo) {
+          <p-card styleClass="dash-card">
+            <ng-template pTemplate="header">
+              <div class="card-header">
+                <div class="card-title-group">
+                  <span class="card-title"><app-draw-icon icon="pi pi-chart-bar"></app-draw-icon> Audits by {{ auditsByView === 'division' ? 'division' : 'sub-division' }}</span>
+                  <span class="card-subtitle">
+                    Total engagements per {{ auditsByView === 'division' ? 'division' : 'sub-division' }}
+                    @if (auditUnitRows.length > PREVIEW_COUNT) { · top {{ PREVIEW_COUNT }} of {{ auditUnitRows.length }} }
+                  </span>
+                </div>
+                <div class="card-actions">
+                  <div class="view-toggle" role="group" aria-label="View audits by">
+                    @for (view of unitViews; track view.key) {
+                      <button type="button"
+                              class="view-toggle__btn"
+                              [class.view-toggle__btn--active]="auditsByView === view.key"
+                              [attr.aria-pressed]="auditsByView === view.key"
+                              (click)="setAuditsByView(view.key)">
+                        {{ view.label }}
+                      </button>
+                    }
+                  </div>
+                  <p-button label="View all" icon="pi pi-external-link" [text]="true" size="small"
+                            [disabled]="!auditUnitRows.length" (onClick)="openAuditsDetail()" />
+                </div>
+              </div>
+            </ng-template>
+            <div class="chart-wrap chart-wrap--bar">
+              <p-chart type="bar" [data]="auditsBySubDivisionChartData" [options]="auditsBySubDivisionChartOptions" [plugins]="auditsBySubDivisionHoverBandPlugins" />
+              @if (!auditUnitRows.length) {
+                <p class="chart-empty">No {{ auditsByView === 'division' ? 'division-level' : 'sub-division' }} audits</p>
+              }
+            </div>
+          </p-card>
+        }
+
+        <p-card styleClass="dash-card">
+          <ng-template pTemplate="header">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="card-title"><app-draw-icon icon="pi pi-calendar"></app-draw-icon> Upcoming audits</span>
+                <span class="card-subtitle">{{ upcomingAudits.length }} scheduled</span>
+              </div>
+              <div class="view-toggle" role="group" aria-label="Upcoming audits view">
+                <button type="button"
+                        class="view-toggle__btn"
+                        [class.view-toggle__btn--active]="upcomingView === 'list'"
+                        [attr.aria-pressed]="upcomingView === 'list'"
+                        aria-label="List view"
+                        (click)="setUpcomingView('list')">
+                  <app-draw-icon icon="pi pi-list"></app-draw-icon> List
+                </button>
+                <button type="button"
+                        class="view-toggle__btn"
+                        [class.view-toggle__btn--active]="upcomingView === 'calendar'"
+                        [attr.aria-pressed]="upcomingView === 'calendar'"
+                        aria-label="Calendar view"
+                        (click)="setUpcomingView('calendar')">
+                  <app-draw-icon icon="pi pi-calendar"></app-draw-icon> Calendar
+                </button>
+              </div>
+            </div>
+          </ng-template>
+
+          <div class="upcoming-list" *ngIf="upcomingView === 'list'">
+            @for (audit of upcomingAudits; track audit.name) {
+              <div class="upcoming-row">
+                <div class="upcoming-dot"
+                  [class.dot-info]="upcomingAuditSeverity[audit.status] === 'info'"
+                  [class.dot-success]="upcomingAuditSeverity[audit.status] === 'success'"
+                  [class.dot-danger]="upcomingAuditSeverity[audit.status] === 'danger'"
+                  [class.dot-secondary]="upcomingAuditSeverity[audit.status] === 'secondary'">
+                </div>
+                <div class="upcoming-body">
+                  <span class="upcoming-name">{{ audit.name }}</span>
+                  <span class="upcoming-meta">{{ audit.subDivision }} · {{ audit.assignee }}</span>
+                </div>
+                <div class="upcoming-right">
+                  <span class="upcoming-date">{{ audit.date | date:'MMM d' }}</span>
+                  <p-tag [value]="audit.status" [severity]="upcomingAuditSeverity[audit.status]" styleClass="status-tag" />
+                </div>
+              </div>
+            }
+          </div>
+
+          <div class="upcoming-calendar" *ngIf="upcomingView === 'calendar'">
+            <div class="upcoming-calendar__nav">
+              <button type="button" class="icon-btn" aria-label="Previous month" (click)="prevMonth()">
+                <app-draw-icon icon="pi pi-chevron-left"></app-draw-icon>
+              </button>
+              <span class="upcoming-calendar__label">{{ calendarMonthLabel }}</span>
+              <button type="button" class="icon-btn" aria-label="Next month" (click)="nextMonth()">
+                <app-draw-icon icon="pi pi-chevron-right"></app-draw-icon>
+              </button>
+            </div>
+
+            <div class="upcoming-calendar__weekdays">
+              <span *ngFor="let wd of weekDayLabels">{{ wd }}</span>
+            </div>
+
+            <div class="upcoming-calendar__grid">
+              <div *ngFor="let cell of calendarDays"
+                   class="upcoming-calendar__cell"
+                   [class.upcoming-calendar__cell--empty]="!cell.day">
+                <span *ngIf="cell.day" class="upcoming-calendar__day">{{ cell.day }}</span>
+                <div class="upcoming-calendar__dots" *ngIf="cell.audits.length">
+                  <span *ngFor="let a of cell.audits"
+                        class="upcoming-calendar__dot"
+                        [class.dot-info]="upcomingAuditSeverity[a.status] === 'info'"
+                        [class.dot-success]="upcomingAuditSeverity[a.status] === 'success'"
+                        [class.dot-danger]="upcomingAuditSeverity[a.status] === 'danger'"
+                        [class.dot-secondary]="upcomingAuditSeverity[a.status] === 'secondary'"
+                        [title]="a.name + ' — ' + a.status"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </p-card>
+
+      </div>
+      </div>
+    }
+
+    <!-- ══ RFIs ══════════════════════════════════════════════════════════ -->
+    @if (activeTab === '1') {
+      @defer (when activeTab === '1'; prefetch on idle) {
+      <div class="tab-canvas">
+
+      <div class="kpi-grid kpi-grid--6">
+        @for (kpi of rfiKpis; track kpi.label) {
+          <div class="kpi-card"
+            [class.kpi-clickable]="isKpiClickable(kpi)"
+            [class.kpi-accent--danger]="kpi.subColor === 'danger'"
+            [class.kpi-accent--success]="kpi.subColor === 'success'"
+            [class.kpi-accent--warning]="kpi.subColor === 'warning'"
+            [class.kpi-accent--muted]="kpi.subColor === 'muted'"
+            (click)="onKpiClick(kpi)"
+            (keydown.enter)="onKpiClick(kpi)"
+            (keydown.space)="onKpiClick(kpi)"
+            [attr.role]="isKpiClickable(kpi) ? 'button' : null"
+            [attr.tabindex]="isKpiClickable(kpi) ? 0 : null">
+            <div class="kpi-icon"><app-draw-icon [icon]="kpi.icon" [size]="18"></app-draw-icon></div>
+            <div class="kpi-body">
+              <span class="kpi-label">{{ kpi.label }}</span>
+              <span class="kpi-value">{{ kpi.value }}</span>
+              <span class="kpi-sub"
+                [class.text-danger]="kpi.subColor === 'danger'"
+                [class.text-warning]="kpi.subColor === 'warning'"
+                [class.text-success]="kpi.subColor === 'success'"
+                [class.text-muted]="kpi.subColor === 'muted'">{{ kpi.sub }}</span>
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="rfi-charts-grid" [class.single-col]="!isCfo">
+        <p-card styleClass="dash-card">
+          <ng-template pTemplate="header">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="card-title"><app-draw-icon icon="pi pi-chart-pie"></app-draw-icon> RFI status distribution</span>
+                <span class="card-subtitle">{{ rfiOpenTotal }} total RFIs</span>
+              </div>
+            </div>
+          </ng-template>
+          <div class="chart-wrap chart-wrap--pie">
+            <app-donut-status-chart [legend]="rfiStatusLegend" [maxWidth]="180"></app-donut-status-chart>
+          </div>
+        </p-card>
+
+        @if (isCfo) {
+          <p-card styleClass="dash-card">
+            <ng-template pTemplate="header">
+              <div class="card-header">
+                <div class="card-title-group">
+                  <span class="card-title"><app-draw-icon icon="pi pi-chart-bar"></app-draw-icon> RFIs by {{ rfisByView === 'division' ? 'division' : 'sub-division' }}</span>
+                  <span class="card-subtitle">
+                    Open vs overdue breakdown
+                    @if (rfiUnitRows.length > PREVIEW_COUNT) { · top {{ PREVIEW_COUNT }} of {{ rfiUnitRows.length }} }
+                  </span>
+                </div>
+                <div class="card-actions">
+                  <div class="view-toggle" role="group" aria-label="View RFIs by">
+                    @for (view of unitViews; track view.key) {
+                      <button type="button"
+                              class="view-toggle__btn"
+                              [class.view-toggle__btn--active]="rfisByView === view.key"
+                              [attr.aria-pressed]="rfisByView === view.key"
+                              (click)="setRfisByView(view.key)">
+                        {{ view.label }}
+                      </button>
+                    }
+                  </div>
+                  <p-button label="View all" icon="pi pi-external-link" [text]="true" size="small"
+                            [disabled]="!rfiUnitRows.length" (onClick)="openRfisDetail()" />
+                </div>
+              </div>
+            </ng-template>
+            <div class="chart-wrap chart-wrap--bar">
+              <p-chart #rfisBySubDivisionChart type="bar" [data]="rfisBySubDivisionChartData" [options]="rfisBySubDivisionChartOptions" [plugins]="rfisBySubDivisionHoverBandPlugins" />
+              @if (!rfiUnitRows.length) {
+                <p class="chart-empty">No {{ rfisByView === 'division' ? 'division-level' : 'sub-division' }} RFIs</p>
+              }
+            </div>
+            <div class="donut-legend">
+              @for (item of rfisBySubDivisionLegend; track item.label; let i = $index) {
+                <div class="donut-legend__item"
+                     [class.donut-legend__item--disabled]="rfisBySubDivisionHidden[i]"
+                     role="button"
+                     tabindex="0"
+                     [attr.aria-pressed]="rfisBySubDivisionHidden[i]"
+                     [attr.aria-label]="(rfisBySubDivisionHidden[i] ? 'Show ' : 'Hide ') + item.label"
+                     (click)="toggleRfisBySubDivisionDataset(i)"
+                     (keydown.enter)="toggleRfisBySubDivisionDataset(i)"
+                     (keydown.space)="$event.preventDefault(); toggleRfisBySubDivisionDataset(i)">
+                  <span class="donut-legend__left">
+                    <span class="donut-legend__dot" [style.background]="item.color"></span>
+                    <span class="donut-legend__label">{{ item.label }}</span>
+                  </span>
+                  <span class="donut-legend__value">{{ item.value }}</span>
+                </div>
+              }
+            </div>
+          </p-card>
+        }
+      </div>
+
+      <!-- RFI table -->
+      <p-card styleClass="dash-card">
+        <!-- Plain content (not an `ng-template pTemplate="header">` slot) so this always
+             renders regardless of PrimeNG version — the named "header" template wasn't being
+             projected at all in this app's build (no title/subtitle showed either, only the
+             table), which is what silently took the "View all" button with it. -->
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="card-title">
+              <app-draw-icon icon="pi pi-file-edit"></app-draw-icon>
+              {{ isCfo ? 'All open RFIs' : 'My RFIs' }}
+            </span>
+            <span class="card-subtitle">{{ rfiOpenTotal }} open — showing 4 most urgent</span>
+          </div>
+          <p-button label="View all" icon="pi pi-arrow-right" iconPos="right" [text]="true" size="small" (onClick)="viewAllRfis()" />
+        </div>
+        <div class="rfi-table">
+          <div class="rfi-table-head">
+            <span>ID</span>
+            <span>Request</span>
+            <span>Sub-Division</span>
+            <span>Due date</span>
+            <span>Status</span>
+          </div>
+          @for (rfi of rfis; track rfi.id) {
+            <div class="rfi-table-row" (click)="openRfi(rfi)" role="button" tabindex="0">
+              <span><span class="rfi-id-badge">{{ rfi.id }}</span></span>
+              <span class="rfi-col-title">
+                <span class="rfi-title">{{ rfi.title }}</span>
+                <span class="rfi-meta-sm">{{ rfi.assignee }}</span>
+              </span>
+              <span class="rfi-meta-sm">{{ rfi.subDivision }}</span>
+              <span class="rfi-meta-sm rfi-due">
+                <app-draw-icon icon="pi pi-calendar"></app-draw-icon>
+                {{ rfi.dueDate | date:'MMM d, yyyy' }}
+              </span>
+              <span>
+                <p-tag [value]="rfi.status" [severity]="rfiSeverity[rfi.status]" styleClass="status-tag" />
+              </span>
+            </div>
+          }
+        </div>
+      </p-card>
+
+      </div>
+      } @placeholder {
+        <div>Preparing RFIs...</div>
+      }
+    }
+
+    <!-- ══ Scope ══════════════════════════════════════════════════════════ -->
+    @if (activeTab === '2') {
+      @defer (when activeTab === '2'; prefetch on idle) {
+      <div class="tab-canvas">
+
+      <!-- Scope summary stats -->
+      <div class="scope-summary-grid">
+        <div class="scope-stat scope-stat--clickable"
+          (click)="goToScopeSummary()"
+          (keydown.enter)="goToScopeSummary()"
+          (keydown.space)="goToScopeSummary()"
+          role="button"
+          tabindex="0">
+          <span class="scope-stat-value">{{ scopeStats.total }}</span>
+          <span class="scope-stat-label">Total items</span>
+        </div>
+        <div class="scope-stat scope-stat--success scope-stat--clickable"
+          (click)="goToScopeSummary('completed')"
+          (keydown.enter)="goToScopeSummary('completed')"
+          (keydown.space)="goToScopeSummary('completed')"
+          role="button"
+          tabindex="0">
+          <span class="scope-stat-value">{{ scopeStats.completed }}</span>
+          <span class="scope-stat-label">Completed</span>
+        </div>
+        <div class="scope-stat scope-stat--info scope-stat--clickable"
+          (click)="goToScopeSummary('in-progress')"
+          (keydown.enter)="goToScopeSummary('in-progress')"
+          (keydown.space)="goToScopeSummary('in-progress')"
+          role="button"
+          tabindex="0">
+          <span class="scope-stat-value">{{ scopeStats.onTrack }}</span>
+          <span class="scope-stat-label">In progress / On track</span>
+        </div>
+        <!-- "At risk / Delayed" groups several ScopeStatus values, but the live source
+             (audit-scope-summary.component.ts) only ever produces 'not-started' among them —
+             'At risk'/'Delayed'/'Pending' never occur in real data — so 'not-started' is the
+             correct single-status filter for what this card actually shows. -->
+        <div class="scope-stat scope-stat--danger scope-stat--clickable"
+          (click)="goToScopeSummary('not-started')"
+          (keydown.enter)="goToScopeSummary('not-started')"
+          (keydown.space)="goToScopeSummary('not-started')"
+          role="button"
+          tabindex="0">
+          <span class="scope-stat-value">{{ scopeStats.atRisk }}</span>
+          <span class="scope-stat-label">At risk / Delayed</span>
+        </div>
+        <!-- No single status filter maps to "average completion" on that page, so this opens
+             the full, unfiltered list rather than a specific status. -->
+        <div class="scope-stat scope-stat--primary scope-stat--clickable"
+          (click)="goToScopeSummary()"
+          (keydown.enter)="goToScopeSummary()"
+          (keydown.space)="goToScopeSummary()"
+          role="button"
+          tabindex="0">
+          <span class="scope-stat-value">{{ scopeStats.avgProgress }}%</span>
+          <span class="scope-stat-label">Avg. completion</span>
+        </div>
+      </div>
+
+      <p-card styleClass="dash-card">
+        <ng-template pTemplate="header">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-title">
+                <app-draw-icon icon="pi pi-list-check"></app-draw-icon>
+                {{ isCfo ? 'Scope summary — all ' + (scopeListView === 'division' ? 'divisions' : 'sub-divisions') : 'My scope — IT Security Assessment' }}
+              </span>
+              <span class="card-subtitle">
+                {{ listedScopes.length }} scope items
+                @if (listedScopes.length > PREVIEW_COUNT) { · showing first {{ PREVIEW_COUNT }} }
+              </span>
+            </div>
+            <div class="card-actions">
+              @if (isCfo) {
+                <div class="view-toggle" role="group" aria-label="View scopes by">
+                  @for (view of unitViews; track view.key) {
+                    <button type="button"
+                            class="view-toggle__btn"
+                            [class.view-toggle__btn--active]="scopeListView === view.key"
+                            [attr.aria-pressed]="scopeListView === view.key"
+                            (click)="setScopeListView(view.key)">
+                      {{ view.label }}
+                    </button>
+                  }
+                </div>
+              }
+              <p-button label="View all" icon="pi pi-external-link" [text]="true" size="small"
+                        [disabled]="!listedScopes.length" (onClick)="openScopesDetail()" />
+            </div>
+          </div>
+        </ng-template>
+        <div class="scope-list">
+          @for (scope of previewScopes; track scope.name) {
+            <div class="scope-row">
+              <div class="scope-meta">
+                <span class="scope-name" [pTooltip]="scope.name" tooltipPosition="top">{{ scope.name }}</span>
+                @if (isCfo && scope.divisionLevel && scope.division) {
+                  <span class="sub-division-tag" [pTooltip]="'Division-level scope'" tooltipPosition="top">{{ scope.division }}</span>
+                } @else if (isCfo && scope.ownSubDivision) {
+                  <span class="sub-division-tag" [pTooltip]="scope.ownSubDivision + ' · ' + scope.division" tooltipPosition="top">{{ scope.ownSubDivision }} · {{ scope.division }}</span>
+                } @else if (isCfo && scope.subDivision) {
+                  <span class="sub-division-tag" [pTooltip]="scope.subDivision" tooltipPosition="top">{{ scope.subDivision }}</span>
+                }
+              </div>
+              <div class="scope-progress">
+                <p-progressBar
+                  [value]="scope.progress"
+                  [showValue]="false"
+                  styleClass="slim-bar"
+                  [style]="{ '--bar-color': progressColor[scope.status] }"
+                />
+                <span class="pct">{{ scope.progress }}%</span>
+              </div>
+              <p-tag [value]="scope.status" [severity]="scopeSeverity[scope.status]" styleClass="status-tag" />
+            </div>
+          }
+        </div>
+      </p-card>
+</div>
+      } @placeholder {
+        <div>Preparing scope...</div>
+      }
+    }
+
+
+    <!-- ══ Notifications & Reports ════════════════════════════════════════ -->
+    @if (activeTab === '3') {
+      @defer (when activeTab === '3'; prefetch on idle) {
+      <div class="tab-canvas">
+
+      <div class="notif-reports-grid">
+
+        <!-- Notifications -->
+        <p-card styleClass="dash-card">
+          <ng-template pTemplate="header">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="card-title"><app-draw-icon icon="pi pi-bell"></app-draw-icon> Notifications</span>
+                @if (unreadCount > 0) {
+                  <span class="card-subtitle unread-label">{{ unreadCount }} unread</span>
+                }
+              </div>
+              @if (unreadCount > 0) {
+                <p-badge [value]="unreadCount.toString()" severity="danger" />
+              }
+            </div>
+          </ng-template>
+          <div class="notif-list">
+            @for (notif of notifications; track notif.title) {
+              <div class="notif-row"
+                [class.unread]="!notif.read"
+                [class.notif-danger]="notif.severity === 'danger'"
+                [class.notif-warn]="notif.severity === 'warn'"
+                [class.notif-info]="notif.severity === 'info'"
+                [class.notif-secondary]="notif.severity === 'secondary'"
+                (click)="openNotif(notif)"
+                role="button"
+                tabindex="0">
+                <i
+                  [class]="notifIcon[notif.severity]"
+                  [class.icon-danger]="notif.severity === 'danger'"
+                  [class.icon-warning]="notif.severity === 'warn'"
+                  [class.icon-info]="notif.severity === 'info'"
+                  [class.icon-secondary]="notif.severity === 'secondary'"
+                ></i>
+                <div class="notif-body">
+                  <div class="notif-header-row">
+                    <span class="notif-title">{{ notif.title }}</span>
+                    @if (!notif.read) { <div class="unread-dot"></div> }
+                  </div>
+                  <span class="notif-desc">{{ truncate(notif.description) }}</span>
+                  <span class="notif-time">
+                    <app-draw-icon icon="pi pi-clock"></app-draw-icon>
+                    {{ notif.date | date:'MMM d, h:mm a' }}
+                  </span>
+                </div>
+                @if (isTruncated(notif.description)) {
+                  <app-draw-icon icon="pi pi-chevron-right" class="notif-expand-icon" pTooltip="View details"></app-draw-icon>
+                }
+              </div>
+            }
+          </div>
+        </p-card>
+
+        <!-- Reports -->
+        <p-card styleClass="dash-card">
+          <ng-template pTemplate="header">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="card-title"><app-draw-icon icon="pi pi-file-pdf"></app-draw-icon> Reports</span>
+                <span class="card-subtitle">{{ reports.length }} documents available</span>
+              </div>
+            </div>
+          </ng-template>
+          <div class="report-list">
+            @for (report of reports; track report.name) {
+              <div class="report-row">
+                <div class="report-icon-wrap" [class.draft]="report.status === 'draft'" [class.final]="report.status === 'final'">
+                  <app-draw-icon icon="pi pi-file-pdf"></app-draw-icon>
+                </div>
+                <div class="report-body">
+                  <span class="report-name">{{ report.name }}</span>
+                  <span class="report-meta">
+                    <span class="report-meta-item"><app-draw-icon icon="pi pi-calendar"></app-draw-icon> {{ report.uploadedDate | date:'MMM d, yyyy' }}</span>
+                    <span class="report-sep">·</span>
+                    <span class="report-meta-item"><app-draw-icon icon="pi pi-database"></app-draw-icon> {{ report.fileSize }}</span>
+                    <span class="report-sep">·</span>
+                    <p-tag
+                      [value]="report.status === 'final' ? 'Final' : 'Draft'"
+                      [severity]="report.status === 'final' ? 'success' : 'secondary'"
+                      styleClass="status-tag" />
+                  </span>
+                </div>
+                <p-button icon="pi pi-download" [text]="true" size="small" pTooltip="Download" (onClick)="downloadReport(report)" />
+              </div>
+            }
+          </div>
+        </p-card>
+
+      </div>
+      </div>
+      } @placeholder {
+        <div>Preparing notifications & reports...</div>
+      }
+    }
+
+
+
+  <!-- ── Notification detail dialog ─────────────────────────────────────── -->
+  <p-dialog
+    [(visible)]="notifDialogVisible"
+    [modal]="true"
+    [closable]="true"
+    [draggable]="false"
+    [resizable]="false"
+    [style]="{ width: '480px' }"
+    (onHide)="closeNotifDialog()"
+  >
+    <ng-template pTemplate="header">
+      @if (selectedNotif) {
+        <div class="notif-dialog-header">
+          <i
+            [class]="notifIcon[selectedNotif.severity]"
+            [class.icon-danger]="selectedNotif.severity === 'danger'"
+            [class.icon-warning]="selectedNotif.severity === 'warn'"
+            [class.icon-info]="selectedNotif.severity === 'info'"
+            [class.icon-secondary]="selectedNotif.severity === 'secondary'"
+          ></i>
+          <span>{{ selectedNotif.title }}</span>
+        </div>
+      }
+    </ng-template>
+    @if (selectedNotif) {
+      <div class="notif-dialog-body">
+        <p class="notif-dialog-desc">{{ selectedNotif.description }}</p>
+        <span class="notif-dialog-date">
+          <app-draw-icon icon="pi pi-calendar"></app-draw-icon>
+          {{ selectedNotif.date | date:'MMMM d, yyyy, h:mm a' }}
+        </span>
+      </div>
+    }
+  </p-dialog>
+

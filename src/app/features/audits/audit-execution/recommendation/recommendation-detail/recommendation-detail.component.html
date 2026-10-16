@@ -1,0 +1,141 @@
+<div class="drawer-inner">
+
+  <!-- Header -->
+  <div class="drawer-header">
+    <div class="drawer-header-left">
+      <div class="drawer-icon-wrap">
+        <app-draw-icon icon="pi pi-check-square"></app-draw-icon>
+      </div>
+      <div class="drawer-title-block">
+        <h2 class="drawer-title">{{ rec.title }}</h2>
+        <p class="drawer-subtitle">{{ rec.id }} · Assigned to {{ rec.assignedTo }}</p>
+      </div>
+    </div>
+    <button class="close-btn" (click)="onClose()">
+      <app-draw-icon icon="pi pi-times"></app-draw-icon>
+    </button>
+  </div>
+
+  <!-- ═══════════════ SCROLLABLE BODY ═══════════════ -->
+  <div class="rec-detail__body">
+
+    <!-- ── stat cards (overlap the hero) ── -->
+    <div class="stat-grid">
+      <div class="stat-card">
+        <span class="stat-ic" [ngClass]="'stat-ic--' + rec.priority"><app-draw-icon icon="pi pi-flag"></app-draw-icon></span>
+        <div class="stat-txt">
+          <span class="stat-num" [ngClass]="'stat-num--' + rec.priority">{{ priorityLabel(rec.priority) }}</span>
+          <span class="stat-lbl">Priority</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-ic stat-ic--blue"><app-draw-icon icon="pi pi-info-circle"></app-draw-icon></span>
+        <div class="stat-txt">
+          <span class="stat-num">{{ statusLabel(rec.status) }}</span>
+          <span class="stat-lbl">Status</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-ic stat-ic--amber"><app-draw-icon icon="pi pi-calendar"></app-draw-icon></span>
+        <div class="stat-txt">
+          <span class="stat-num" [class.stat-num--danger]="isOverdue">{{ rec.dueDate | date:'MMM d, y' }}</span>
+          <span class="stat-lbl">Due Date</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-ic" [ngClass]="isOverdue ? 'stat-ic--red' : 'stat-ic--mint'"><app-draw-icon icon="pi pi-hourglass"></app-draw-icon></span>
+        <div class="stat-txt">
+          <span class="stat-num" [class.stat-num--danger]="isOverdue">
+            {{ isOverdue ? ('Overdue by ' + (-daysUntilDue) + 'd') : (daysUntilDue + 'd') }}
+          </span>
+          <span class="stat-lbl">{{ isOverdue ? 'Past Due' : 'Days Remaining' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── overdue banner ── -->
+    <div class="overdue-banner" *ngIf="isOverdue">
+      <app-draw-icon icon="pi pi-clock"></app-draw-icon>
+      <span>This recommendation is overdue by {{ -daysUntilDue }} day{{ -daysUntilDue !== 1 ? 's' : '' }}.</span>
+    </div>
+
+    <!-- ═══════════════ BASIC INFORMATION ═══════════════ -->
+    <div class="sec-card">
+      <div class="sec-head">
+        <span class="sec-ic sec-ic--blue"><app-draw-icon icon="pi pi-info-circle"></app-draw-icon></span>
+        <h3>Basic Information</h3>
+      </div>
+
+      <div class="kv-grid">
+        <div class="kv">
+          <span class="kv__k">Recommendation ID</span>
+          <span class="kv__v"><strong>{{ rec.id }}</strong></span>
+        </div>
+        <div class="kv">
+          <span class="kv__k">Priority</span>
+          <span class="kv__v">
+            <span class="priority-badge" [ngClass]="'priority--' + rec.priority">
+              <app-draw-icon icon="pi pi-flag"></app-draw-icon> {{ priorityLabel(rec.priority) }}
+            </span>
+          </span>
+        </div>
+        <div class="kv">
+          <span class="kv__k">Status</span>
+          <span class="kv__v">
+            <span class="status-chip" [ngClass]="'rec-status--' + rec.status">{{ statusLabel(rec.status) }}</span>
+          </span>
+        </div>
+        <div class="kv">
+          <span class="kv__k">Assigned To</span>
+          <span class="kv__v"><app-draw-icon icon="pi pi-user" class="kv-ic"></app-draw-icon>{{ rec.assignedTo }}</span>
+        </div>
+        <div class="kv">
+          <span class="kv__k">Due Date</span>
+          <span class="kv__v" [class.kv__v--danger]="isOverdue">
+            <app-draw-icon icon="pi pi-calendar" class="kv-ic"></app-draw-icon>{{ rec.dueDate | date:'MMM d, y' }}
+          </span>
+        </div>
+        <div class="kv">
+          <span class="kv__k">Created</span>
+          <span class="kv__v"><app-draw-icon icon="pi pi-calendar-plus" class="kv-ic"></app-draw-icon>{{ rec.createdDate | date:'MMM d, y' }}</span>
+        </div>
+        <div class="kv kv--full">
+          <span class="kv__k">Days Remaining</span>
+          <span class="kv__v" [class.kv__v--danger]="isOverdue">
+            <app-draw-icon icon="pi pi-hourglass" class="kv-ic"></app-draw-icon>{{ isOverdue ? 'Overdue' : daysUntilDue + 'd' }}
+          </span>
+        </div>
+      </div>
+
+      <div class="notes">
+        <span class="notes__k"><app-draw-icon icon="pi pi-align-left"></app-draw-icon> Recommended Action</span>
+        <p class="notes__v">{{ rec.description }}</p>
+      </div>
+    </div>
+
+    <!-- ═══════════════ LINKED ITEMS ═══════════════ -->
+    <div class="sec-card">
+      <div class="sec-head">
+        <span class="sec-ic sec-ic--violet"><app-draw-icon icon="pi pi-link"></app-draw-icon></span>
+        <h3>Linked Items</h3>
+      </div>
+
+      <div class="linked-rows">
+        <div class="linked-row">
+          <span class="linked-row__type linked-row__type--obs"><app-draw-icon icon="pi pi-eye"></app-draw-icon> {{ rec.observationId }}</span>
+          <span class="linked-row__name">{{ rec.observationTitle }}</span>
+        </div>
+        <div class="linked-row">
+          <span class="linked-row__type linked-row__type--finding"><app-draw-icon icon="pi pi-flag"></app-draw-icon> {{ rec.findingId }}</span>
+          <span class="linked-row__name">Linked Finding</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <div class="drawer-footer">
+    <p-button label="Close" styleClass="cancel-btn" (onClick)="onClose()" type="button"></p-button>
+  </div>
+</div>

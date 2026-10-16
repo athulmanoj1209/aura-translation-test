@@ -1,0 +1,335 @@
+<section class="members-page">
+
+  <!-- =============================== HEADER =============================== -->
+  <header class="page-header" [formGroup]="filters">
+
+    <!-- Row 1: Title + right-side actions -->
+    <div class="page-header__row page-header__row--top">
+      <div class="page-header__text">
+        <h1 class="page-header__title">Audit Team Members</h1>
+        <p class="page-header__subtitle">Manage all team members assigned to audit engagements</p>
+      </div>
+
+      <div class="page-header__actions">
+        <!-- Add Member -->
+        <p-button label="+ New Member"
+                  styleClass="btn-add-member"
+                  (onClick)="openAddMember()"
+                  type="button"></p-button>
+
+        <!-- View toggle -->
+        <div class="view-toggle" role="group" aria-label="View mode">
+          <button type="button"
+                  class="view-toggle__btn"
+                  [class.is-active]="viewMode() === 'grid'"
+                  (click)="setViewMode('grid')"
+                  aria-label="Grid view">
+            <app-draw-icon icon="pi pi-th-large"></app-draw-icon>
+          </button>
+          <button type="button"
+                  class="view-toggle__btn"
+                  [class.is-active]="viewMode() === 'list'"
+                  (click)="setViewMode('list')"
+                  aria-label="List view">
+            <app-draw-icon icon="pi pi-list"></app-draw-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: Sort + Filters (left) + Search (right) -->
+    <div class="page-header__row page-header__row--filters">
+      <div class="page-header__filter-group">
+        <!-- Sort by -->
+        <p-select formControlName="sortBy"
+                  [options]="sortOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  styleClass="sort-select">
+          <ng-template pTemplate="selectedItem" let-selected>
+            <span class="sort-selected">
+              <app-draw-icon icon="pi pi-sort-alt"></app-draw-icon>
+              <span>Sort By: {{ selected?.label }}</span>
+            </span>
+          </ng-template>
+        </p-select>
+
+        <!-- Filters trigger -->
+        <button type="button" class="filter-bar__trigger" (click)="filterPanel.toggle($event)">
+          <app-draw-icon icon="pi pi-sliders-h"></app-draw-icon>
+          <span>Filters</span>
+          <span *ngIf="activeFilterCount() > 0" class="filter-bar__badge">{{ activeFilterCount() }}</span>
+        </button>
+
+        <!-- Active chips -->
+        <div *ngIf="hasActiveFilters()" class="filter-bar__chips">
+          <span *ngFor="let chip of activeFilterChips()" class="filter-chip">
+            {{ chip.label }}
+            <button type="button" (click)="removeFilter(chip.key)"><app-draw-icon icon="pi pi-times"></app-draw-icon></button>
+          </span>
+          <button type="button" class="filter-bar__clear" (click)="clearFilters()">
+            <app-draw-icon icon="pi pi-times"></app-draw-icon> Clear all
+          </button>
+        </div>
+      </div>
+
+      <!-- Search -->
+      <span class="search-input">
+        <app-draw-icon icon="pi pi-search" class="search-input__icon"></app-draw-icon>
+        <input pInputText type="text"
+               formControlName="search"
+               placeholder="Search by name, designation, expertise..." />
+      </span>
+    </div>
+
+  </header>
+
+  <!-- ============================== FILTER POPOVER ======================= -->
+  <p-popover #filterPanel styleClass="fp-panel">
+    <div class="fp-header">
+      <span class="fp-title"><app-draw-icon icon="pi pi-sliders-h"></app-draw-icon> Filters</span>
+      <button type="button" class="fp-clear-link" *ngIf="hasActiveFilters()" (click)="clearFilters()">Clear all</button>
+    </div>
+    <div class="fp-grid">
+      <div class="fp-field">
+        <label class="fp-label">Company</label>
+        <p-multiSelect [options]="companyFilterOptions()" [ngModel]="selectedCompanies()" (ngModelChange)="onCompaniesChange($event)"
+          optionLabel="label" optionValue="value" placeholder="All companies" display="chip"
+          [filter]="true" [maxSelectedLabels]="1" selectedItemsLabel="{0} companies" styleClass="fp-select"></p-multiSelect>
+      </div>
+      <div class="fp-field">
+        <label class="fp-label">Division</label>
+        <p-multiSelect [options]="divisionFilterOptions()" [ngModel]="selectedDivisions()" (ngModelChange)="onDivisionsChange($event)"
+          optionLabel="label" optionValue="value" placeholder="All divisions" display="chip"
+          [filter]="true" [maxSelectedLabels]="1" selectedItemsLabel="{0} divisions" styleClass="fp-select"></p-multiSelect>
+      </div>
+      <div class="fp-field">
+        <label class="fp-label">Sub-Division</label>
+        <p-multiSelect [disabled]="!subDivisionFilterVisible()" [options]="subDivisionFilterOptions()" [ngModel]="selectedSubDivisions()" (ngModelChange)="onSubDivisionsChange($event)"
+          optionLabel="label" optionValue="value" [placeholder]="subDivisionFilterVisible() ? 'All sub-divisions' : 'No sub-divisions for this division'" display="chip"
+          [filter]="true" [maxSelectedLabels]="1" selectedItemsLabel="{0} sub-divisions" styleClass="fp-select"></p-multiSelect>
+      </div>
+      <div class="fp-field">
+        <label class="fp-label">Designation</label>
+        <p-multiSelect [options]="designationFilterOptions()" [ngModel]="selectedDesignations()" (ngModelChange)="onDesignationsChange($event)"
+          optionLabel="label" optionValue="value" placeholder="All designations" display="chip"
+          [filter]="true" [maxSelectedLabels]="1" selectedItemsLabel="{0} designations" styleClass="fp-select"></p-multiSelect>
+      </div>
+    </div>
+    <div class="fp-footer">
+      <button type="button" class="fp-btn fp-btn--ghost" (click)="clearFilters(); filterPanel.hide()">Reset</button>
+      <button type="button" class="fp-btn fp-btn--primary" (click)="filterPanel.hide()">
+        Apply<span *ngIf="activeFilterCount() > 0"> ({{ activeFilterCount() }})</span>
+      </button>
+    </div>
+  </p-popover>
+
+  <!-- ============================== EMPTY STATE =========================== -->
+  <ng-container *ngIf="totalCount() === 0; else dataBlock">
+    <div class="empty-state">
+      <app-draw-icon icon="pi pi-users" class="empty-state__icon"></app-draw-icon>
+      <p class="empty-state__text">No members match your filters.</p>
+    </div>
+  </ng-container>
+
+  <!-- ============================== DATA BLOCK ============================ -->
+  <ng-template #dataBlock>
+
+    <!-- ============================== GRID VIEW =========================== -->
+    <div *ngIf="viewMode() === 'grid'" class="members members--grid">
+      <article *ngFor="let member of pagedMembers(); trackBy: trackById"
+               class="member-card"
+               [class.member-card--inactive]="member.blocked">
+
+        <div class="member-card__top">
+          <div class="member-card__avatar-wrap">
+            <div class="member-card__avatar">
+              <img [src]="member.avatarUrl || defaultAvatar"
+                   [alt]="member.name"
+                   (error)="onAvatarError($event)" />
+            </div>
+            <svg class="member-card__avatar-ring" viewBox="0 0 52 52" width="52" height="52" aria-hidden="true">
+              <circle pathLength="100" cx="26" cy="26" r="24" fill="none" stroke-width="2"></circle>
+            </svg>
+          </div>
+
+          <h3 class="member-card__name">{{ member.name }}</h3>
+          <div class="member-card__chips">
+            <span class="chip chip--role">{{ member.designation }}</span>
+            <span class="chip chip--years">{{ member.yearsOfExperience }} yrs exp.</span>
+          </div>
+        </div>
+
+        <div class="member-card__body">
+          <!-- Company / Division / Sub-Division — internal-audit clients only,
+               sourced from the same DAR Exchange static data used to build
+               the Company/Division/Sub-Division filters above. -->
+          <div class="member-card__row" *ngIf="isInternalAudit" pTooltip="Company / Division / Sub-Division" tooltipPosition="top">
+            <app-draw-icon icon="pi pi-building" class="member-card__row-icon"></app-draw-icon>
+            <div class="member-card__row-text">
+              <span class="member-card__row-value">{{ member.company }}</span>
+              <span class="member-card__row-sub">{{ member.division }}<ng-container *ngIf="member.subDivision"> · {{ member.subDivision }}</ng-container></span>
+            </div>
+          </div>
+
+          <div class="member-card__row" pTooltip="Expertise" tooltipPosition="top">
+            <app-draw-icon icon="pi pi-bookmark" class="member-card__row-icon"></app-draw-icon>
+            <div class="member-card__row-text">
+              <span class="member-card__row-value">{{ member.expertise }}</span>
+            </div>
+          </div>
+
+          <div class="member-card__row" pTooltip="Contact" tooltipPosition="top">
+            <app-draw-icon icon="pi pi-envelope" class="member-card__row-icon"></app-draw-icon>
+            <div class="member-card__row-text">
+              <span class="member-card__row-value">{{ member.email }}</span>
+              <span class="member-card__row-sub">{{ member.phone }}</span>
+            </div>
+          </div>
+
+          <div class="member-card__workload">
+            <div class="member-card__workload-head">
+              <span class="label">Workload</span>
+              <span class="value">{{ member.workloadPct }}%</span>
+            </div>
+            <div class="member-card__workload-bar">
+              <span class="member-card__workload-fill"
+                    [style.width.%]="member.workloadPct"
+                    [attr.data-tier]="workloadTier(member.workloadPct)"></span>
+            </div>
+          </div>
+        </div>
+
+        <footer class="member-card__actions">
+          <div class="member-card__actions-icons">
+            <button type="button" class="icon-btn icon-btn--edit"
+                    pTooltip="Edit" tooltipPosition="top"
+                    (click)="editMember(member)" aria-label="Edit">
+              <app-draw-icon icon="pi pi-pencil"></app-draw-icon>
+            </button>
+            <button type="button" class="icon-btn"
+                    [class.icon-btn--activate]="member.blocked"
+                    [class.icon-btn--deactivate]="!member.blocked"
+                    [pTooltip]="member.blocked ? 'Activate' : 'Deactivate'"
+                    tooltipPosition="top"
+                    (click)="openConfirmation(member)"
+                    [attr.aria-label]="member.blocked ? 'Activate' : 'Deactivate'">
+              <app-draw-icon [icon]="member.blocked ? 'pi pi-check-circle' : 'pi pi-ban'"></app-draw-icon>
+            </button>
+          </div>
+
+          <button type="button" class="btn-view" (click)="viewMember(member, $event)">
+            View
+          </button>
+        </footer>
+      </article>
+    </div>
+
+    <!-- ============================== LIST VIEW =========================== -->
+    <div *ngIf="viewMode() === 'list'" class="members members--list">
+      <div class="list-header">
+        <span class="list-header__cell col-name">Member</span>
+        <span class="list-header__cell col-designation">Designation</span>
+        <span class="list-header__cell col-experience">Experience</span>
+        <span class="list-header__cell col-expertise">Expertise</span>
+        <span class="list-header__cell col-contact">Contact</span>
+        <span class="list-header__cell col-workload">Workload</span>
+        <span class="list-header__cell col-actions">Action</span>
+      </div>
+
+      <article *ngFor="let member of pagedMembers(); trackBy: trackById"
+               class="member-row"
+               [class.member-row--inactive]="member.blocked">
+
+        <div class="col-name">
+          <div class="cell-name">
+            <div class="cell-avatar">
+              <img [src]="member.avatarUrl || defaultAvatar"
+                   [alt]="member.name"
+                   (error)="onAvatarError($event)" />
+            </div>
+            <span class="cell-name__text">{{ member.name }}</span>
+          </div>
+        </div>
+
+        <div class="col-designation">
+          <span class="cell-designation">{{ member.designation }}</span>
+          <!-- Division / Sub-Division — internal-audit clients only. -->
+          <span class="cell-org" *ngIf="isInternalAudit" [pTooltip]="member.company" tooltipPosition="top">
+            {{ member.division }}<ng-container *ngIf="member.subDivision"> · {{ member.subDivision }}</ng-container>
+          </span>
+        </div>
+
+        <div class="col-experience">
+          <span class="cell-experience">{{ member.yearsOfExperience }} yrs</span>
+        </div>
+
+        <div class="col-expertise">
+          <span class="cell-expertise">{{ member.expertise }}</span>
+        </div>
+
+        <div class="col-contact">
+          <div class="cell-contact">
+            <span class="cell-contact__email">{{ member.email }}</span>
+            <span class="cell-contact__phone">{{ member.phone }}</span>
+          </div>
+        </div>
+
+        <div class="col-workload">
+          <div class="cell-workload">
+            <div class="cell-workload__bar">
+              <span class="cell-workload__fill"
+                    [style.width.%]="member.workloadPct"
+                    [attr.data-tier]="workloadTier(member.workloadPct)"></span>
+            </div>
+            <span class="cell-workload__pct">{{ member.workloadPct }}%</span>
+          </div>
+        </div>
+
+        <div class="col-actions">
+          <div class="row-actions">
+            <button type="button" class="btn-view"
+                    (click)="viewMember(member, $event)">
+              View
+            </button>
+            <button type="button" class="icon-btn icon-btn--edit"
+                    pTooltip="Edit" tooltipPosition="top"
+                    (click)="editMember(member)" aria-label="Edit">
+              <app-draw-icon icon="pi pi-pencil"></app-draw-icon>
+            </button>
+            <button type="button" class="icon-btn"
+                    [class.icon-btn--activate]="member.blocked"
+                    [class.icon-btn--deactivate]="!member.blocked"
+                    [pTooltip]="member.blocked ? 'Activate' : 'Deactivate'"
+                    tooltipPosition="top"
+                    (click)="openConfirmation(member)"
+                    [attr.aria-label]="member.blocked ? 'Activate' : 'Deactivate'">
+              <app-draw-icon [icon]="member.blocked ? 'pi pi-check-circle' : 'pi pi-ban'"></app-draw-icon>
+            </button>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <!-- ============================ PAGINATION ============================ -->
+    <app-pagination-bar
+      [pageSize]="pageSize()"
+      [totalRecords]="totalCount()"
+      [currentPage]="currentPage() - 1"
+      [rowsPerPageOptions]="pageSizeOptions"
+      entityLabel="members"
+      (pageChange)="onPageChange($event)"
+      (rowsChange)="onPageSizeChange($event)">
+    </app-pagination-bar>
+  </ng-template>
+
+  <!-- ============================ CONFIRM DIALOG ========================= -->
+  <app-confirm-action-dialog
+    [visible]="displayConfirmation()"
+    [action]="confirmationAction()"
+    [itemName]="confirmationTarget()?.name ?? ''"
+    (confirmed)="confirmToggleBlocked()"
+    (cancelled)="closeConfirmation()"
+  />
+
+</section>

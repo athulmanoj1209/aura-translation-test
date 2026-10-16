@@ -1,0 +1,363 @@
+$primary: var(--primary-color);
+$border-color: var(--surface-border);
+$muted: var(--text-color-secondary);
+$danger: var(--p-red-500);
+$success: var(--p-green-500);
+$shadow-card: 0 0 15px rgba(104, 134, 177, 0.15);
+
+:host {
+  display: block;
+  height: 100%;
+}
+
+.add-audit-report {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 8px 4px;
+}
+
+// ── Upload form ──────────────────────────────────────────────────────────────
+.add-audit-report__form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 640px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.add-audit-report__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.add-audit-report__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: $primary;
+}
+
+.add-audit-report__input,
+.add-audit-report__textarea {
+  width: 100%;
+}
+
+.add-audit-report__field-error {
+  color: $danger;
+  font-size: 11px;
+}
+
+.add-audit-report__hint {
+  color: $muted;
+  font-size: 11px;
+}
+
+// ── Status pill (clickable toggle) ──────────────────────────────────────────
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  padding: 6px 18px;
+  border-radius: 20px;
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+
+  &--active {
+    background: color-mix(in srgb, var(--p-green-500) 16%, transparent);
+    color: var(--p-green-500);
+  }
+
+  &--inactive {
+    background: color-mix(in srgb, var(--p-red-500) 10%, transparent);
+    color: var(--p-red-500);
+  }
+}
+
+.add-audit-report__error {
+  width: 100%;
+}
+
+.add-audit-report__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+  margin-bottom: 20px;
+
+  ::ng-deep p-button {
+    ::ng-deep button {
+      background: var(--primary-color) !important;
+    }
+  }
+}
+
+// ── File drop zone ───────────────────────────────────────────────────────────
+::ng-deep .add-audit-report__fileupload {
+  .p-fileupload-content {
+    border: 1.5px dashed $border-color;
+    border-radius: 10px;
+    background: #fafbfc;
+  }
+  ::ng-deep .p-fileupload-header {
+    ::ng-deep p-button {
+    ::ng-deep button {
+      background: var(--primary-color) !important;
+    }
+  }
+  }
+}
+
+.add-audit-report__drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 28px 16px;
+  text-align: center;
+}
+
+.add-audit-report__drop-zone-icon {
+  font-size: 28px;
+  color: $primary;
+  margin-bottom: 4px;
+}
+
+.add-audit-report__drop-zone-title {
+  font-size: 13px;
+  color: $muted;
+  margin: 0;
+}
+
+.add-audit-report__drop-zone-or {
+  font-size: 11px;
+  color: $muted;
+}
+
+.add-audit-report__browse-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1.5px solid $primary;
+  color: $primary;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+
+  &:hover {
+    background-color: $primary;
+    color: #fff;
+  }
+}
+
+.add-audit-report__file-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: $primary;
+  margin: 0;
+}
+
+// ── Locked file (edit mode) ──────────────────────────────────────────────────
+.add-audit-report__file-locked {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1.5px solid $border-color;
+  border-radius: 10px;
+  background: #fafbfc;
+
+  i {
+    color: $primary;
+    font-size: 16px;
+  }
+}
+
+.add-audit-report__file-locked-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: $primary;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.add-audit-report__replace-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1.5px solid $primary;
+  color: $primary;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.2s, color 0.2s;
+
+  &:hover:not(:disabled) {
+    background-color: $primary;
+    color: #fff;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+// ── Processing phase (accepted message + notifications) ─────────────────────
+.add-audit-report__split {
+  display: flex;
+  gap: 24px;
+  height: 100%;
+  min-height: 0;
+}
+
+.add-audit-report__accepted {
+  flex: 1 1 45%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  padding: 24px;
+  background: var(--surface-card);
+  border-radius: 12px;
+  box-shadow: $shadow-card;
+}
+
+.add-audit-report__accepted-icon {
+  font-size: 40px;
+  color: $primary;
+}
+
+.add-audit-report__accepted-message {
+  font-size: 14px;
+  color: $primary;
+  font-weight: 600;
+  max-width: 380px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+// Final outcome, once the last SSE notification carries a terminal status.
+.add-audit-report__accepted--success {
+  .add-audit-report__accepted-icon {
+    color: $success;
+  }
+
+  .add-audit-report__accepted-message {
+    color: $success;
+  }
+}
+
+.add-audit-report__accepted--failed {
+  .add-audit-report__accepted-icon {
+    color: $danger;
+  }
+
+  .add-audit-report__accepted-message {
+    color: $danger;
+  }
+}
+
+.add-audit-report__notifications {
+  flex: 1 1 55%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface-card);
+  border-radius: 12px;
+  box-shadow: $shadow-card;
+  padding: 16px;
+}
+
+.add-audit-report__notifications-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: $primary;
+  margin: 0 0 12px 0;
+}
+
+.add-audit-report__connection-warning {
+  margin-bottom: 10px;
+}
+
+.add-audit-report__notification-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.add-audit-report__notifications-empty {
+  font-size: 12px;
+  color: $muted;
+  text-align: center;
+  margin-top: 20px;
+}
+
+.add-audit-report__notification-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid $border-color;
+  background: #f8f9fb;
+  font-size: 13px;
+  color: #333;
+
+  &--completed {
+    border-color: color-mix(in srgb, $success 40%, transparent);
+    background: color-mix(in srgb, $success 8%, transparent);
+  }
+
+  &--failed {
+    border-color: color-mix(in srgb, $danger 40%, transparent);
+    background: color-mix(in srgb, $danger 8%, transparent);
+    color: $danger;
+  }
+
+  &--clickable {
+    cursor: pointer;
+    transition: box-shadow 0.15s, transform 0.15s;
+
+    &:hover {
+      box-shadow: 0 0 0 2px color-mix(in srgb, $success 25%, transparent);
+      transform: translateY(-1px);
+    }
+  }
+}
+
+.add-audit-report__notification-icon {
+  flex-shrink: 0;
+  font-size: 15px;
+  color: $primary;
+
+  .add-audit-report__notification-card--completed & {
+    color: $success;
+  }
+}
+
+.add-audit-report__notification-message {
+  flex: 1;
+}

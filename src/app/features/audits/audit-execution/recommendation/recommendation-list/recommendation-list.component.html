@@ -1,0 +1,299 @@
+<section class="rec-page">
+
+  <!-- PAGE HEADER -->
+  <header class="page-header">
+    <div class="page-header__text">
+      <h1 class="page-header__title">Recommendations</h1>
+      <p class="page-header__subtitle">Remediation actions raised from audit observations and findings</p>
+    </div>
+    <div class="page-header__actions">
+      <p-button label="+ New Recommendation" styleClass="btn-add" (onClick)="openAdd()" type="button"></p-button>
+      <div class="view-toggle" role="group">
+        <button type="button" class="view-toggle__btn" [class.is-active]="viewMode() === 'list'"
+                (click)="setView('list')" pTooltip="List view" tooltipPosition="top"><app-draw-icon icon="pi pi-list"></app-draw-icon></button>
+        <button type="button" class="view-toggle__btn" [class.is-active]="viewMode() === 'grid'"
+                (click)="setView('grid')" pTooltip="Grid view" tooltipPosition="top"><app-draw-icon icon="pi pi-th-large"></app-draw-icon></button>
+      </div>
+    </div>
+  </header>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+
+    <!-- Filter button + floating panel -->
+    <div class="filter-wrap" (click)="$event.stopPropagation()">
+      <button type="button" class="filters-btn" [class.is-active]="showFilter()"
+              (click)="toggleFilter($event)">
+        <app-draw-icon icon="pi pi-sliders-h"></app-draw-icon> Filters
+        <span *ngIf="hasFilters()" class="filters-btn__badge"></span>
+      </button>
+
+      <!-- Floating filter panel -->
+      <div *ngIf="showFilter()" class="filter-panel" (click)="onFilterPanelClick($event)">
+
+        <div class="filter-panel__header">
+          <app-draw-icon icon="pi pi-sliders-h"></app-draw-icon>
+          <span>Filters</span>
+          <button type="button" class="filter-panel__close" (click)="showFilter.set(false)">
+            <app-draw-icon icon="pi pi-times"></app-draw-icon>
+          </button>
+        </div>
+
+        <div class="filter-panel__body">
+
+          <!-- Row 1: Priority + Status -->
+          <div class="filter-panel__row">
+            <div class="filter-panel__field">
+              <label>PRIORITY</label>
+              <select [ngModel]="draft().priority" (ngModelChange)="setDraft('priority', $event)">
+                <option value="">All priorities</option>
+                <option *ngFor="let o of priorityOptions" [value]="o.value">{{ o.label }}</option>
+              </select>
+            </div>
+            <div class="filter-panel__field">
+              <label>STATUS</label>
+              <select [ngModel]="draft().status" (ngModelChange)="setDraft('status', $event)">
+                <option value="">All statuses</option>
+                <option *ngFor="let o of statusOptions" [value]="o.value">{{ o.label }}</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Row 2: Company + Division -->
+          <div class="filter-panel__row">
+            <div class="filter-panel__field">
+              <label>COMPANY</label>
+              <select [ngModel]="draft().company" (ngModelChange)="onDraftCompanyChange($event)">
+                <option value="">All companies</option>
+                <option *ngFor="let o of companyOptions()" [value]="o.value">{{ o.label }}</option>
+              </select>
+            </div>
+            <div class="filter-panel__field">
+              <label>DIVISION</label>
+              <p-multiSelect [options]="divisionOptions()" [ngModel]="draft().division" (ngModelChange)="onDraftDivisionChange($event)"
+                optionLabel="label" optionValue="value" placeholder="All divisions" display="chip"
+                [maxSelectedLabels]="1" selectedItemsLabel="{0} divisions" appendTo="body" styleClass="fp-select" panelStyleClass="filter-panel-overlay"></p-multiSelect>
+            </div>
+          </div>
+
+          <!-- Row 3: Sub-Division + Auditor -->
+          <div class="filter-panel__row">
+            <div class="filter-panel__field">
+              <label>SUB-DIVISION</label>
+              <p-multiSelect [disabled]="!subDivisionFilterVisible()" [options]="subDivisionOptions()" [ngModel]="draft().subDivision" (ngModelChange)="setDraft('subDivision', $event ?? [])"
+                [placeholder]="subDivisionFilterVisible() ? 'All sub-divisions' : 'No sub-divisions for this division'" display="chip"
+                optionLabel="label" optionValue="value"
+                [maxSelectedLabels]="1" selectedItemsLabel="{0} sub-divisions" appendTo="body" styleClass="fp-select" panelStyleClass="filter-panel-overlay"></p-multiSelect>
+            </div>
+            <div class="filter-panel__field">
+              <label>AUDITOR</label>
+              <select [ngModel]="draft().auditor" (ngModelChange)="setDraft('auditor', $event)">
+                <option value="">All auditors</option>
+                <option *ngFor="let o of auditorOptions()" [value]="o.value">{{ o.label }}</option>
+              </select>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="filter-panel__footer">
+          <button type="button" class="fp-btn fp-btn--reset" (click)="resetFilters()">Reset</button>
+          <button type="button" class="fp-btn fp-btn--apply" (click)="applyFilters()">Apply filters</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Clear active filters -->
+    <button *ngIf="hasFilters()" type="button" class="toolbar__clear" (click)="clearAll()">
+      <app-draw-icon icon="pi pi-times"></app-draw-icon><span>Clear</span>
+    </button>
+
+    <!-- Search — pushed to right -->
+    <div class="toolbar__right">
+      <span class="toolbar__search">
+        <app-draw-icon icon="pi pi-search"></app-draw-icon>
+        <input pInputText type="text" [ngModel]="searchQuery()"
+               (ngModelChange)="onSearch($event)" placeholder="Search by ID, title or assignee…" />
+      </span>
+    </div>
+
+  </div>
+
+  <!-- ── LIST VIEW ── -->
+  <div *ngIf="viewMode() === 'list'" class="rec-card">
+    <div *ngIf="paginated().length === 0" class="rec-empty">
+      <app-draw-icon icon="pi pi-inbox"></app-draw-icon>
+      <span>No recommendations match your filters.</span>
+      <button *ngIf="hasFilters()" type="button" class="rec-empty__btn" (click)="clearAll()">Clear filters</button>
+    </div>
+
+    <div *ngIf="paginated().length > 0" class="rec-rows">
+      <div class="list-header">
+        <span class="list-header__cell col-id sortable" (click)="onSort('id')" [class.is-sorted]="sortColumn() === 'id'">
+          ID <i class="pi sortable__arrow" [ngClass]="sortIcon('id')"></i>
+        </span>
+        <span class="list-header__cell col-title sortable" (click)="onSort('title')" [class.is-sorted]="sortColumn() === 'title'">
+          Recommendation <i class="pi sortable__arrow" [ngClass]="sortIcon('title')"></i>
+        </span>
+        <span class="list-header__cell col-obs">Finding</span>
+        <span class="list-header__cell col-priority sortable" (click)="onSort('priority')" [class.is-sorted]="sortColumn() === 'priority'">
+          Priority <i class="pi sortable__arrow" [ngClass]="sortIcon('priority')"></i>
+        </span>
+        <span class="list-header__cell col-status sortable" (click)="onSort('status')" [class.is-sorted]="sortColumn() === 'status'">
+          Status <i class="pi sortable__arrow" [ngClass]="sortIcon('status')"></i>
+        </span>
+        <span class="list-header__cell col-assigned sortable" (click)="onSort('assignedTo')" [class.is-sorted]="sortColumn() === 'assignedTo'">
+          Assigned To <i class="pi sortable__arrow" [ngClass]="sortIcon('assignedTo')"></i>
+        </span>
+        <span class="list-header__cell col-due sortable" (click)="onSort('dueDate')" [class.is-sorted]="sortColumn() === 'dueDate'">
+          Due Date <i class="pi sortable__arrow" [ngClass]="sortIcon('dueDate')"></i>
+        </span>
+        <span class="list-header__cell col-actions">Actions</span>
+      </div>
+
+      <article *ngFor="let r of paginated(); trackBy: trackById"
+          class="rec-row"
+          [class.rec-row--inactive]="r.isActive === false">
+        <div class="col-id"><span class="rec-id">{{ r.id }}</span></div>
+        <div class="col-title"><span class="rec-title">{{ r.title }}</span></div>
+        <div class="col-obs"><span class="obs-chip"><app-draw-icon icon="pi pi-eye"></app-draw-icon> {{ r.findingId }}</span></div>
+        <div class="col-priority">
+          <span class="priority-badge" [ngClass]="'priority--' + r.priority">
+            {{ priorityLabel(r.priority) }}
+          </span>
+        </div>
+        <div class="col-status">
+          <span class="status-chip" [ngClass]="'rec-status--' + r.status">
+            {{ statusLabel(r.status) }}
+          </span>
+        </div>
+        <div class="col-assigned"><span class="assignee"><app-draw-icon icon="pi pi-user"></app-draw-icon> {{ r.assignedTo }}</span></div>
+        <div class="col-due">
+          <span class="due-date" [class.is-overdue]="isOverdue(r)">
+            <i class="pi" [ngClass]="isOverdue(r) ? 'pi-exclamation-triangle' : 'pi-calendar'"></i>
+            {{ r.dueDate | date:'MMM d, y' }}
+          </span>
+        </div>
+        <div class="col-actions">
+          <div class="row-actions">
+            <button type="button" class="btn-view"
+                    (click)="openView(r)">
+              View
+            </button>
+            <button type="button" class="icon-btn"
+                    (click)="openEdit(r)" pTooltip="Edit" tooltipPosition="top">
+              <app-draw-icon icon="pi pi-pencil"></app-draw-icon>
+            </button>
+            <button type="button" class="icon-btn"
+                    [class.icon-btn--activate]="r.isActive === false"
+                    [class.icon-btn--deactivate]="r.isActive !== false"
+                    [pTooltip]="r.isActive !== false ? 'Deactivate' : 'Activate'"
+                    tooltipPosition="top"
+                    (click)="openConfirmation(r)">
+              <app-draw-icon [icon]="r.isActive !== false ? 'pi pi-ban' : 'pi pi-check-circle'"></app-draw-icon>
+            </button>
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+
+  <!-- ── GRID VIEW ── -->
+  <div *ngIf="viewMode() === 'grid'">
+    <div *ngIf="paginated().length === 0" class="rec-empty rec-empty--block">
+      <app-draw-icon icon="pi pi-inbox"></app-draw-icon><span>No recommendations match your filters.</span>
+    </div>
+    <div class="rec-grid">
+      <article *ngFor="let r of paginated(); trackBy: trackById"
+               class="rec-card-item"
+               [class.is-overdue]="isOverdue(r)"
+               [class.rec-card-item--inactive]="r.isActive === false">
+
+        <span class="status-chip status-tag--corner" [ngClass]="'rec-status--' + r.status">{{ statusLabel(r.status) }}</span>
+
+        <div class="card-header">
+          <div class="rec-avatar-wrap">
+            <div class="rec-badge"><app-draw-icon icon="pi pi-check-square"></app-draw-icon></div>
+            <svg class="rec-avatar-ring" viewBox="0 0 52 52" width="52" height="52" aria-hidden="true">
+              <circle pathLength="100" cx="26" cy="26" r="24" fill="none" stroke-width="2"></circle>
+            </svg>
+          </div>
+          <h3 class="rec-card-item__title">{{ r.title }}</h3>
+          <span class="rec-id-sub"><app-draw-icon icon="pi pi-hashtag"></app-draw-icon>{{ r.id }}</span>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-item" pTooltip="Finding" tooltipPosition="top">
+            <span class="info-icon"><app-draw-icon icon="pi pi-eye"></app-draw-icon></span>
+            <div class="info-content"><span class="info-value">{{ r.findingId }}</span></div>
+          </div>
+          <div class="info-item" pTooltip="Assigned To" tooltipPosition="top">
+            <span class="info-icon"><app-draw-icon icon="pi pi-user"></app-draw-icon></span>
+            <div class="info-content"><span class="info-value">{{ r.assignedTo }}</span></div>
+          </div>
+          <div class="info-item" pTooltip="Sub-Division" tooltipPosition="top">
+            <span class="info-icon"><app-draw-icon icon="pi pi-sitemap"></app-draw-icon></span>
+            <div class="info-content"><span class="info-value">{{ r.subDivision }}</span></div>
+          </div>
+          <div class="info-item" pTooltip="Due Date" tooltipPosition="top">
+            <span class="info-icon"><app-draw-icon [icon]="isOverdue(r) ? 'pi pi-exclamation-triangle' : 'pi pi-calendar'"></app-draw-icon></span>
+            <div class="info-content"><span class="info-value due-date" [class.is-overdue]="isOverdue(r)">{{ r.dueDate | date:'MMM d, y' }}</span></div>
+          </div>
+        </div>
+
+        <div class="tags-row">
+          <span class="priority-badge" [ngClass]="'priority--' + r.priority">{{ priorityLabel(r.priority) }}</span>
+        </div>
+
+        <footer class="card-footer">
+          <span class="company-label">
+            <app-draw-icon icon="pi pi-building"></app-draw-icon>{{ r.company }}
+          </span>
+          <div class="card-actions">
+            <div class="card-actions__icons">
+              <button type="button" class="icon-btn"
+                      (click)="openEdit(r)" pTooltip="Edit" tooltipPosition="top">
+                <app-draw-icon icon="pi pi-pencil"></app-draw-icon>
+              </button>
+              <button type="button" class="icon-btn"
+                      [class.icon-btn--activate]="r.isActive === false"
+                      [class.icon-btn--deactivate]="r.isActive !== false"
+                      [pTooltip]="r.isActive !== false ? 'Deactivate' : 'Activate'"
+                      tooltipPosition="top"
+                      (click)="openConfirmation(r)">
+                <app-draw-icon [icon]="r.isActive !== false ? 'pi pi-ban' : 'pi pi-check-circle'"></app-draw-icon>
+              </button>
+            </div>
+
+            <button type="button" class="btn-view" (click)="openView(r)">
+              View
+            </button>
+          </div>
+        </footer>
+      </article>
+    </div>
+  </div>
+
+  <!-- PAGINATION -->
+  @if (filtered().length > 0) {
+    <app-pagination-bar
+      [pageSize]="pageSize()"
+      [totalRecords]="filtered().length"
+      [currentPage]="currentPage() - 1"
+      [rowsPerPageOptions]="pageSizeOptions"
+      entityLabel="recommendations"
+      (pageChange)="onPageChange($event)"
+      (rowsChange)="onPageSizeChange($event)">
+    </app-pagination-bar>
+  }
+
+  <!-- ── Shared confirm dialog ── -->
+  <app-confirm-action-dialog
+    [visible]="displayConfirmation()"
+    [action]="confirmationAction()"
+    [itemName]="confirmationTarget()?.title ?? ''"
+    (confirmed)="confirmToggleBlocked()"
+    (cancelled)="closeConfirmation()"
+  />
+
+</section>

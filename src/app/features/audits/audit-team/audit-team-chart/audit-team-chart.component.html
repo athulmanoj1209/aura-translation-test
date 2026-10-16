@@ -1,0 +1,304 @@
+<section class="chart-page">
+
+  <!-- =============================== HEADER =============================== -->
+  <header class="page-header" [formGroup]="filters">
+    <div class="page-header__text">
+      <h1 class="page-header__title">Audit Team Chart</h1>
+      <p class="page-header__subtitle">
+        Visual representation of company sub-divisions and audit management
+      </p>
+    </div>
+
+    <div class="page-header__controls">
+
+      <!-- Search -->
+      <span class="search-input">
+        <app-draw-icon icon="pi pi-search" class="search-input__icon"></app-draw-icon>
+        <input pInputText type="text"
+               formControlName="search"
+               placeholder="Search by company, sub-division, license etc..." />
+      </span>
+
+      <!-- Region -->
+      <p-select formControlName="region"
+                [options]="regionOptions"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Country/Region"
+                styleClass="sort-select"></p-select>
+
+      <!-- Expand/Collapse all -->
+      <button type="button" class="header-action-btn"
+              (click)="toggleAll(true)" aria-label="Expand all">
+        <app-draw-icon icon="pi pi-angle-double-down"></app-draw-icon>
+      </button>
+      <button type="button" class="header-action-btn"
+              (click)="toggleAll(false)" aria-label="Collapse all">
+        <app-draw-icon icon="pi pi-angle-double-up"></app-draw-icon>
+      </button>
+
+      <!-- Pan (chart view only) -->
+      <button *ngIf="viewMode() === 'chart'"
+              type="button" class="header-action-btn header-action-btn--pan"
+              [class.is-active]="panModeEnabled()"
+              (click)="togglePanMode()"
+              [attr.aria-label]="panModeEnabled() ? 'Exit pan mode' : 'Pan mode'">
+        <span class="pan-hand-icon">✋</span>
+      </button>
+
+      <!-- View toggle -->
+      <div class="view-toggle" role="group" aria-label="View mode">
+        <button type="button"
+                class="view-toggle__btn"
+                [class.is-active]="viewMode() === 'list'"
+                (click)="setViewMode('list')"
+                aria-label="List view">
+          <app-draw-icon icon="pi pi-list"></app-draw-icon>
+        </button>
+        <button type="button"
+                class="view-toggle__btn"
+                [class.is-active]="viewMode() === 'chart'"
+                (click)="setViewMode('chart')"
+                aria-label="Chart view">
+          <app-draw-icon icon="pi pi-sitemap"></app-draw-icon>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============================= CHART VIEW ============================ -->
+  <div *ngIf="viewMode() === 'chart'" class="chart-wrap"
+       #chartWrap
+       [class.is-dragging]="!!draggingId()"
+       [class.pan-mode-active]="panModeEnabled()"
+       [class.is-panning]="isPanning()"
+       (mousedown)="onChartMouseDown($event)"
+       (dragstart)="onChartDragStart($event)">
+
+    <ng-container *ngIf="visibleTree().length > 0; else emptyTree">
+      <p-organizationChart [value]="visibleTree()"
+                           [collapsible]="true"
+                           selectionMode="single"
+                           styleClass="audit-org-chart">
+
+        <!-- Per-node template (uses default 'person' type) -->
+        <ng-template let-node pTemplate="default">
+          <ng-container *ngTemplateOutlet="nodeCard; context: { $implicit: node.data }"></ng-container>
+        </ng-template>
+      </p-organizationChart>
+    </ng-container>
+
+    <ng-template #emptyTree>
+      <div class="empty-state">
+        <app-draw-icon icon="pi pi-sitemap" class="empty-state__icon"></app-draw-icon>
+        <p class="empty-state__text">No team members match your filters.</p>
+      </div>
+    </ng-template>
+  </div>
+
+  <!-- ============================= LIST VIEW ============================ -->
+  <!-- Flattened parent → child → sub-child tree: each row is indented by
+       depth and a subtree can be collapsed via its row's toggle chevron,
+       mirroring the chart view's expand/collapse behaviour. -->
+  <div *ngIf="viewMode() === 'list'" class="list-wrap">
+    <article *ngFor="let row of flatVisibleRows(); trackBy: trackByRow"
+             class="list-row"
+             [class.is-blocked]="row.member.blocked"
+             [class.is-child]="row.depth > 0"
+             [style.--depth]="row.depth">
+
+      <button type="button" class="list-row__toggle"
+              [class.is-leaf]="!row.hasChildren"
+              [class.is-collapsed]="row.hasChildren && !row.expanded"
+              [disabled]="!row.hasChildren"
+              (click)="toggleNode(row.member.id, $event)"
+              [attr.aria-label]="row.hasChildren ? (row.expanded ? 'Collapse' : 'Expand') : null"
+              [attr.tabindex]="row.hasChildren ? 0 : -1">
+        <app-draw-icon icon="pi pi-chevron-down"></app-draw-icon>
+      </button>
+
+      <div class="list-row__avatar">
+        <img [src]="row.member.avatarUrl" [alt]="row.member.name" />
+      </div>
+      <div class="list-row__info">
+        <span class="list-row__name">{{ row.member.name }}</span>
+        <span class="list-row__title">{{ row.member.title }}</span>
+      </div>
+      <span class="chip chip--years">{{ row.member.experience }} yrs exp.</span>
+      <span class="chip chip--exp" *ngFor="let e of row.member.expertise">{{ e }}</span>
+      <div class="list-row__workload">
+        <span class="value">{{ row.member.workloadPct }}%</span>
+        <div class="bar">
+          <span class="fill"
+                [style.width.%]="row.member.workloadPct"
+                [attr.data-tier]="workloadTier(row.member.workloadPct)"></span>
+        </div>
+      </div>
+      <div class="list-row__actions">
+        <button type="button" class="icon-btn icon-btn--view"
+                (click)="viewMember(row.member, $event)" aria-label="View">
+          <app-draw-icon icon="pi pi-eye"></app-draw-icon>
+        </button>
+        <button type="button" class="icon-btn icon-btn--edit"
+                (click)="editMember(row.member, $event)" aria-label="Edit">
+          <app-draw-icon icon="pi pi-pencil"></app-draw-icon>
+        </button>
+        <button type="button" class="icon-btn icon-btn--block"
+                [class.is-blocked]="row.member.blocked"
+                (click)="openConfirmation(row.member)"
+                [attr.aria-label]="row.member.blocked ? 'Activate' : 'Deactivate'">
+          <app-draw-icon icon="pi pi-ban"></app-draw-icon>
+        </button>
+        <button type="button" class="icon-btn icon-btn--focus"
+                (click)="focusOnSubtree(row.member, $event)" aria-label="Focus subtree">
+          <app-draw-icon icon="pi pi-sitemap"></app-draw-icon>
+        </button>
+      </div>
+    </article>
+  </div>
+
+  <!-- ===================================================================
+   *  Reusable node-card template
+   *  • Wrapped with cdkDrag so the whole card can be picked up
+   *  • Wrapped with cdkDropList so other cards can be dropped on this one
+   *  • Block the CAE from being dragged (mandatory root)
+   * =================================================================== -->
+  <ng-template #nodeCard let-member>
+    <div class="node-card"
+         [class.is-blocked]="member.blocked"
+         [class.is-selected]="selectedId() === member.id"
+         [class.is-cae]="member.role === 'CAE'"
+         [class.is-drop-target]="isValidDropTarget(member.id)"
+         cdkDropList
+         [cdkDropListData]="member.id"
+         (cdkDropListDropped)="onDropOnNode(member.id, $event)"
+         (click)="onSelect(member)">
+
+      <!-- Draggable layer — the actual card content -->
+      <div class="node-card__draggable"
+           cdkDrag
+           [cdkDragData]="member.id"
+           [cdkDragDisabled]="member.role === 'CAE' || panModeEnabled()"
+           (cdkDragStarted)="onDragStart(member.id)"
+           (cdkDragEnded)="onDragEnd()">
+
+        <!-- Colored top accent badge -->
+        <span class="node-card__badge"
+              [ngClass]="tierClass(member.badge?.tier)"
+              *ngIf="member.badge as b">
+          {{ b.label }}
+        </span>
+
+        <!-- Header row -->
+        <div class="node-card__head">
+          <div class="node-card__avatar">
+            <img [src]="member.avatarUrl" [alt]="member.name" />
+          </div>
+          <div class="node-card__title-block">
+            <h4 class="node-card__name">{{ member.name }}</h4>
+            <p class="node-card__role">{{ member.title }}</p>
+          </div>
+        </div>
+
+        <!-- Body -->
+        <div class="node-card__body">
+          <div class="node-card__row">
+            <app-draw-icon icon="pi pi-map-marker" class="node-card__row-icon"></app-draw-icon>
+            <span class="node-card__row-label">Experience</span>
+            <span class="chip chip--years">{{ member.experience }} years</span>
+          </div>
+
+          <div class="node-card__row">
+            <app-draw-icon icon="pi pi-bookmark" class="node-card__row-icon"></app-draw-icon>
+            <span class="node-card__row-label">Expertise</span>
+            <div class="node-card__row-chips">
+              <span *ngFor="let e of member.expertise" class="chip chip--exp">{{ e }}</span>
+            </div>
+          </div>
+
+          <div class="node-card__workload">
+            <div class="node-card__workload-head">
+              <span class="label">Workload</span>
+              <span class="value">{{ member.workloadPct }}%</span>
+            </div>
+            <div class="node-card__workload-bar">
+              <span class="node-card__workload-fill"
+                    [style.width.%]="member.workloadPct"
+                    [attr.data-tier]="workloadTier(member.workloadPct)"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <footer class="node-card__actions">
+          <button type="button" class="icon-btn icon-btn--view"
+                  (click)="viewMember(member, $event)" aria-label="View">
+            <app-draw-icon icon="pi pi-eye"></app-draw-icon>
+          </button>
+          <button type="button" class="icon-btn icon-btn--edit"
+                  (click)="editMember(member, $event)" aria-label="Edit">
+            <app-draw-icon icon="pi pi-pencil"></app-draw-icon>
+          </button>
+          <button type="button" class="icon-btn icon-btn--block"
+                  [class.is-blocked]="member.blocked"
+                  (click)="openConfirmation(member)"
+                  [attr.aria-label]="member.blocked ? 'Activate' : 'Deactivate'">
+            <app-draw-icon icon="pi pi-ban"></app-draw-icon>
+          </button>
+          <button type="button" class="icon-btn icon-btn--focus"
+                  (click)="focusOnSubtree(member, $event)" aria-label="Focus subtree">
+            <app-draw-icon icon="pi pi-sitemap"></app-draw-icon>
+          </button>
+        </footer>
+
+        <!-- Drag preview (what's shown while dragging) -->
+        <div *cdkDragPreview class="node-card node-card--preview">
+          <div class="node-card__head">
+            <div class="node-card__avatar">
+              <img [src]="member.avatarUrl" [alt]="member.name" />
+            </div>
+            <div class="node-card__title-block">
+              <h4 class="node-card__name">{{ member.name }}</h4>
+              <p class="node-card__role">{{ member.title }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </ng-template>
+  <!-- ============================ CONFIRMATION =========================== -->
+  <p-dialog
+    header="Confirmation"
+    [visible]="displayConfirmation()"
+    (visibleChange)="$event ? null : closeConfirmation()"
+    [modal]="true"
+    [draggable]="false"
+    [resizable]="false"
+    [closable]="false"
+    [style]="{ width: '420px' }"
+    styleClass="confirm-dialog"
+  >
+    <div class="confirm-body">
+      <app-draw-icon icon="pi pi-exclamation-triangle" class="confirm-body__icon"></app-draw-icon>
+      <span class="confirm-body__text">
+        Are you sure you want to
+        <strong>{{ confirmationAction() | lowercase }}</strong>
+        <strong>  {{ confirmationTarget()?.name }}</strong>?
+      </span>
+    </div>
+
+    <ng-template pTemplate="footer">
+      <p-button label="No"
+                icon="pi pi-times"
+                [text]="true"
+                severity="secondary"
+                (onClick)="closeConfirmation()"></p-button>
+     <p-button [label]="confirmationAction() === 'Activate' ? 'Yes, activate' : 'Yes, deactivate'"
+                icon="pi pi-check"
+                [severity]="confirmationAction() === 'Deactivate' ? 'danger' : 'success'"
+                [outlined]="true"
+                autofocus
+                (onClick)="confirmToggleBlocked()"></p-button>
+    </ng-template>
+  </p-dialog>
+</section>

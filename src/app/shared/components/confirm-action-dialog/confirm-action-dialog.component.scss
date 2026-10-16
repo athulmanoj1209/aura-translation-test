@@ -1,0 +1,51 @@
+/* Confirm Action Dialog — shared styles
+   The ::ng-deep rules target the PrimeNG overlay so they apply regardless
+   of where this component is used. */
+
+::ng-deep .confirm-dialog {
+  .p-dialog-header {
+    background: rgba(223, 235, 247, 0.8117647059);
+    padding: 1.25rem 1.5rem 0.75rem;
+    font-weight: 600;
+    font-size: 1rem;
+    border-bottom: 1px solid var(--surface-border);
+    border-top-right-radius: 6px;
+    border-top-left-radius: 6px;
+  }
+
+  .p-dialog-content {
+    padding: 1.25rem 1.5rem;
+  }
+
+  .p-dialog-footer {
+        padding: 0.5rem 1rem 1rem .5rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    border-top: 1px solid var(--surface-border);
+  }
+}
+
+.confirm-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+
+  &__icon {
+    font-size: 1.5rem;
+    color: var(--p-orange-500);
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  &__text {
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--text-color);
+  }
+
+  /* Ensure a visible space between action word and item name */
+  &__name::before {
+    content: '\00a0'; /* non-breaking space */
+  }
+}

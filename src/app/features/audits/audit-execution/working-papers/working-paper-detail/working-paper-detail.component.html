@@ -1,0 +1,198 @@
+<div class="drawer-inner">
+
+  <!-- Header -->
+  <div class="drawer-header">
+    <div class="drawer-header-left">
+      <div class="drawer-icon-wrap">
+        <app-draw-icon icon="pi pi-file-edit"></app-draw-icon>
+      </div>
+      <div class="drawer-title-block">
+        <h2 class="drawer-title">{{ wp.title }}</h2>
+        <p class="drawer-subtitle">{{ wp.id }} · {{ wp.scope }}</p>
+      </div>
+    </div>
+    <button class="close-btn" (click)="onClose()">
+      <app-draw-icon icon="pi pi-times"></app-draw-icon>
+    </button>
+  </div>
+
+  <!-- ═══════════════ SCROLLABLE BODY ═══════════════ -->
+  <div class="wp-detail__body">
+
+    <!-- ── stat cards (overlap the hero) ── -->
+    <div class="stat-grid">
+      <div class="stat-card">
+        <span class="stat-ic stat-ic--teal"><app-draw-icon icon="pi pi-paperclip"></app-draw-icon></span>
+        <div class="stat-txt">
+          <span class="stat-num">{{ wp.files.length }}</span>
+          <span class="stat-lbl">File{{ wp.files.length !== 1 ? 's' : '' }} Attached</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-ic stat-ic--blue"><app-draw-icon icon="pi pi-database"></app-draw-icon></span>
+        <div class="stat-txt">
+          <span class="stat-num">{{ formatFileSize(totalSize) }}</span>
+          <span class="stat-lbl">Total Size</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-ic stat-ic--violet"><app-draw-icon icon="pi pi-flag"></app-draw-icon></span>
+        <div class="stat-txt">
+          <span class="stat-num">{{ statusLabel(wp.status) }}</span>
+          <span class="stat-lbl">Status</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-ic stat-ic--amber"><app-draw-icon icon="pi pi-exclamation-triangle"></app-draw-icon></span>
+        <div class="stat-txt">
+          <span class="stat-num">{{ riskLabel(wp.riskLevel) }}</span>
+          <span class="stat-lbl">Risk Level</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ BASIC INFORMATION ═══════════════ -->
+    <div class="sec-card">
+      <div class="sec-head">
+        <span class="sec-ic sec-ic--blue"><app-draw-icon icon="pi pi-info-circle"></app-draw-icon></span>
+        <h3>Basic Information</h3>
+      </div>
+
+      <div class="kv-grid">
+        <div class="kv">
+          <span class="kv__k">Reference</span>
+          <span class="kv__v"><strong>{{ wp.id }}</strong></span>
+        </div>
+        <div class="kv">
+          <span class="kv__k">Type</span>
+          <span class="kv__v"><span class="type-badge">{{ typeLabel(wp.wpType) }}</span></span>
+        </div>
+        <div class="kv">
+          <span class="kv__k">Scope</span>
+          <span class="kv__v"><app-draw-icon icon="pi pi-sitemap" class="kv-ic"></app-draw-icon>{{ wp.scope }}</span>
+        </div>
+        <div class="kv">
+          <span class="kv__k">Subscope</span>
+          <span class="kv__v"><app-draw-icon icon="pi pi-tag" class="kv-ic"></app-draw-icon>{{ wp.subscope }}</span>
+        </div>
+        <div class="kv">
+          <span class="kv__k">Assertion</span>
+          <span class="kv__v">{{ wp.assertion }}</span>
+        </div>
+        <div class="kv">
+          <span class="kv__k">Risk</span>
+          <span class="kv__v"><span class="risk-badge" [ngClass]="'risk-badge--' + wp.riskLevel">{{ riskLabel(wp.riskLevel) }}</span></span>
+        </div>
+        <div class="kv">
+          <span class="kv__k">Status</span>
+          <span class="kv__v"><span class="status-badge" [ngClass]="'status-badge--' + wp.status">{{ statusLabel(wp.status) }}</span></span>
+        </div>
+        <div class="kv">
+          <span class="kv__k">Finding</span>
+          <span class="kv__v" [pTooltip]="wp.findingTitle" tooltipPosition="top">
+            <span class="finding-chip">{{ wp.findingId || '—' }}</span>
+          </span>
+        </div>
+        <div class="kv">
+          <span class="kv__k">Task</span>
+          <span class="kv__v" [pTooltip]="wp.taskTitle" tooltipPosition="top">
+            <span class="task-chip">{{ wp.taskId || '—' }}</span>
+          </span>
+        </div>
+        <div class="kv">
+          <span class="kv__k">Prepared By</span>
+          <span class="kv__v"><app-draw-icon icon="pi pi-user" class="kv-ic"></app-draw-icon>{{ wp.preparedBy || '—' }}</span>
+        </div>
+        <div class="kv">
+          <span class="kv__k">Prepared</span>
+          <span class="kv__v"><app-draw-icon icon="pi pi-calendar" class="kv-ic"></app-draw-icon>{{ wp.preparedDate | date:'MMM d, y' }}</span>
+        </div>
+        <div class="kv">
+          <span class="kv__k">Reviewed By</span>
+          <span class="kv__v"><app-draw-icon icon="pi pi-user-edit" class="kv-ic"></app-draw-icon>{{ wp.reviewedBy || '—' }}</span>
+        </div>
+        <div class="kv">
+          <span class="kv__k">Reviewed</span>
+          <span class="kv__v"><app-draw-icon icon="pi pi-calendar" class="kv-ic"></app-draw-icon>{{ wp.reviewedDate ? (wp.reviewedDate | date:'MMM d, y') : '—' }}</span>
+        </div>
+        <div class="kv">
+          <span class="kv__k">Created</span>
+          <span class="kv__v"><app-draw-icon icon="pi pi-calendar" class="kv-ic"></app-draw-icon>{{ wp.createdDate | date:'MMM d, y' }}</span>
+        </div>
+        <ng-container *ngIf="isInternalAudit">
+          <div class="kv">
+            <span class="kv__k">Company</span>
+            <span class="kv__v"><app-draw-icon icon="pi pi-building" class="kv-ic"></app-draw-icon>{{ companyName || '—' }}</span>
+          </div>
+          <div class="kv">
+            <span class="kv__k">Division</span>
+            <span class="kv__v"><app-draw-icon icon="pi pi-map-marker" class="kv-ic"></app-draw-icon>{{ wp.division || '—' }}</span>
+          </div>
+          <div class="kv">
+            <span class="kv__k">Sub-Division</span>
+            <span class="kv__v"><app-draw-icon icon="pi pi-briefcase" class="kv-ic"></app-draw-icon>{{ wp.subDivision || '—' }}</span>
+          </div>
+        </ng-container>
+        <div class="kv">
+          <span class="kv__k">Files</span>
+          <span class="kv__v">{{ wp.files.length }} file{{ wp.files.length !== 1 ? 's' : '' }} · {{ formatFileSize(totalSize) }}</span>
+        </div>
+      </div>
+
+      <div class="notes" *ngIf="wp.objective">
+        <span class="notes__k"><app-draw-icon icon="pi pi-flag"></app-draw-icon> Objective / Purpose</span>
+        <p class="notes__v">{{ wp.objective }}</p>
+      </div>
+      <div class="notes" *ngIf="wp.conclusion">
+        <span class="notes__k"><app-draw-icon icon="pi pi-check-circle"></app-draw-icon> Conclusion / Results</span>
+        <p class="notes__v">{{ wp.conclusion }}</p>
+      </div>
+      <div class="notes" *ngIf="wp.description">
+        <span class="notes__k"><app-draw-icon icon="pi pi-align-left"></app-draw-icon> Notes</span>
+        <p class="notes__v">{{ wp.description }}</p>
+      </div>
+    </div>
+
+    <!-- ═══════════════ ATTACHED FILES ═══════════════ -->
+    <div class="sec-card">
+      <div class="sec-head">
+        <span class="sec-ic sec-ic--teal"><app-draw-icon icon="pi pi-paperclip"></app-draw-icon></span>
+        <h3>Attached Files</h3>
+        <span class="sec-count">{{ wp.files.length }}</span>
+      </div>
+
+      <ul class="file-list">
+        <li *ngFor="let f of wp.files"
+            class="file-list__item"
+            [class.file-list__item--clickable]="canDownload(f)"
+            (click)="canDownload(f) && downloadFile(f)"
+            [pTooltip]="canDownload(f) ? 'Click to download' : ''"
+            tooltipPosition="top">
+          <div class="file-list__icon-wrap">
+            <i class="pi" [ngClass]="fileIcon(f.name)"></i>
+          </div>
+          <div class="file-list__info">
+            <span class="file-list__name">{{ f.name }}</span>
+            <span class="file-list__size">{{ formatFileSize(f.size) }}</span>
+          </div>
+          <button type="button"
+                  class="file-list__download"
+                  [class.file-list__download--disabled]="!canDownload(f)"
+                  (click)="$event.stopPropagation(); downloadFile(f)"
+                  [disabled]="!canDownload(f)"
+                  pTooltip="Download" tooltipPosition="top"
+                  aria-label="Download file">
+            <app-draw-icon icon="pi pi-download"></app-draw-icon>
+          </button>
+        </li>
+      </ul>
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <div class="drawer-footer">
+    <p-button label="Close" styleClass="cancel-btn" (onClick)="onClose()" type="button"></p-button>
+  </div>
+
+</div>

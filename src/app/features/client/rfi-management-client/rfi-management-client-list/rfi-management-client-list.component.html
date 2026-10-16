@@ -1,0 +1,343 @@
+<div class="rfi-page">
+
+  <div class="page-header__top">
+    <div class="page-title-block">
+      <h2 class="page-title">My RFIs</h2>
+      @if (userRole === 'cfo') {
+        <p class="page-subtitle">View and respond to RFIs across all sub-divisions</p>
+      } @else if (division) {
+        <p class="page-subtitle">View and respond to RFIs for the {{ division }} division and its sub-divisions</p>
+      } @else {
+        <p class="page-subtitle">View and respond to RFIs for the {{ subDivision }} sub-division</p>
+      }
+    </div>
+    <div class="page-header__actions">
+      <div class="role-switch" role="group" aria-label="Role switch">
+        <button type="button" class="role-switch__btn" [class.is-active]="userRole === 'cfo'"
+          (click)="setRole('cfo')" aria-label="Admin">
+          <i class="pi pi-shield"></i>
+          Admin
+        </button>
+        <button type="button" class="role-switch__btn" [class.is-active]="userRole === 'subDivision'"
+          (click)="setRole('subDivision')" aria-label="Sub-Division Head">
+          <i class="pi pi-user"></i>
+          Sub-Division Head
+        </button>
+      </div>
+      <div class="view-toggle" role="group" aria-label="View mode">
+        <button type="button" class="view-toggle__btn" [class.is-active]="viewMode === 'list'"
+          (click)="setViewMode('list')" pTooltip="List View" tooltipPosition="top" aria-label="List view">
+          <app-draw-icon icon="pi pi-list"></app-draw-icon>
+        </button>
+        <button type="button" class="view-toggle__btn" [class.is-active]="viewMode === 'grid'"
+          (click)="setViewMode('grid')" pTooltip="Grid View" tooltipPosition="top" aria-label="Grid view">
+          <app-draw-icon icon="pi pi-th-large"></app-draw-icon>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════ PAGE HEADER ═══════════════════════ -->
+  <div class="page-header">
+
+    <!-- ═══════════════════════ STAT BOXES ═══════════════════════ -->
+    <div class="rfi-stat-row">
+      <div class="rfi-stat-card rfi-stat-card--total">
+        <div class="rfi-stat-card__icon-wrap">
+          <app-draw-icon icon="pi pi-folder-open" [size]="20"></app-draw-icon>
+        </div>
+        <span class="rfi-stat-card__label">Total RFIs</span>
+        <span class="rfi-stat-card__count">{{ totalCount }}</span>
+      </div>
+      <div class="rfi-stat-card rfi-stat-card--pending">
+        <div class="rfi-stat-card__icon-wrap">
+          <app-draw-icon icon="pi pi-clock" [size]="20"></app-draw-icon>
+        </div>
+        <span class="rfi-stat-card__label">Pending</span>
+        <span class="rfi-stat-card__count">{{ pendingCount }}</span>
+      </div>
+      <div class="rfi-stat-card rfi-stat-card--overdue">
+        <div class="rfi-stat-card__icon-wrap">
+          <app-draw-icon icon="pi pi-exclamation-circle" [size]="20"></app-draw-icon>
+        </div>
+        <span class="rfi-stat-card__label">Overdue</span>
+        <span class="rfi-stat-card__count">{{ overdueCount }}</span>
+      </div>
+      <div class="rfi-stat-card rfi-stat-card--review">
+        <div class="rfi-stat-card__icon-wrap">
+          <app-draw-icon icon="pi pi-eye" [size]="20"></app-draw-icon>
+        </div>
+        <span class="rfi-stat-card__label">Under Review</span>
+        <span class="rfi-stat-card__count">{{ underReviewCount }}</span>
+      </div>
+      <div class="rfi-stat-card rfi-stat-card--completed">
+        <div class="rfi-stat-card__icon-wrap">
+          <app-draw-icon icon="pi pi-check-circle" [size]="20"></app-draw-icon>
+        </div>
+        <span class="rfi-stat-card__label">Completed</span>
+        <span class="rfi-stat-card__count">{{ completedCount }}</span>
+      </div>
+      <div class="rfi-stat-card rfi-stat-card--reopened">
+        <div class="rfi-stat-card__icon-wrap">
+          <app-draw-icon icon="pi pi-refresh" [size]="20"></app-draw-icon>
+        </div>
+        <span class="rfi-stat-card__label">Reopened</span>
+        <span class="rfi-stat-card__count">{{ reopenedCount }}</span>
+      </div>
+    </div>
+
+    <!-- Filters row -->
+    <div class="page-header__filters">
+      <div class="page-header__selects">
+
+        <!-- CFO-only cascading filters -->
+        @if (userRole === 'cfo') {
+          <p-multiSelect [options]="divisionOptions" [(ngModel)]="selectedDivisions" optionLabel="label" optionValue="value"
+            placeholder="All Divisions" [showClear]="true" [filter]="true" filterPlaceholder="Search divisions..."
+            [maxSelectedLabels]="1" selectedItemsLabel="{0} divisions" class="scope-subscope--dropdown"
+            (onChange)="onDivisionChange()">
+            <ng-template pTemplate="item" let-item>
+              <div class="category-option"><app-draw-icon icon="pi pi-map-marker"></app-draw-icon><span>{{ item.label }}</span></div>
+            </ng-template>
+          </p-multiSelect>
+
+          <p-multiSelect [options]="deptOptions" [(ngModel)]="selectedDeptValues" optionLabel="label" optionValue="value"
+            placeholder="All Sub-Divisions" [showClear]="true" [maxSelectedLabels]="1" selectedItemsLabel="{0} sub-divisions"
+            class="scope-subscope--dropdown" (onChange)="onDeptChange()">
+            <ng-template pTemplate="item" let-item>
+              <div class="category-option"><app-draw-icon icon="pi pi-sitemap"></app-draw-icon><span>{{ item.label }}</span></div>
+            </ng-template>
+          </p-multiSelect>
+
+          <p-multiSelect [options]="scopeOptions" [(ngModel)]="selectedScopeValues" optionLabel="label"
+            optionValue="value" placeholder="All Scopes" [showClear]="true" [maxSelectedLabels]="1"
+            selectedItemsLabel="{0} scopes" class="scope-subscope--dropdown" (onChange)="onScopeChange()">
+            <ng-template pTemplate="item" let-item>
+              <div class="category-option"><app-draw-icon icon="pi pi-map-marker"></app-draw-icon><span>{{ item.label }}</span></div>
+            </ng-template>
+          </p-multiSelect>
+
+          <p-multiSelect [options]="subScopeOptions" [(ngModel)]="selectedSubScopeValues" optionLabel="label"
+            optionValue="value" placeholder="All Sub-Scopes" [showClear]="true" [maxSelectedLabels]="1"
+            selectedItemsLabel="{0} sub-scopes" class="scope-subscope--dropdown" (onChange)="onFilterChange()">
+            <ng-template pTemplate="item" let-item>
+              <div class="category-option"><app-draw-icon icon="pi pi-tag"></app-draw-icon><span>{{ item.label }}</span></div>
+            </ng-template>
+          </p-multiSelect>
+        }
+
+        <!-- Status filter (both roles) -->
+        <p-multiSelect [options]="statusOptions" [(ngModel)]="selectedStatuses" optionLabel="label" optionValue="value"
+          placeholder="All Statuses" [showClear]="true" [maxSelectedLabels]="1" selectedItemsLabel="{0} statuses"
+          class="scope-subscope--dropdown" (onChange)="onFilterChange()">
+          <ng-template pTemplate="item" let-item>
+            <div class="category-option"><app-draw-icon icon="pi pi-circle-fill"></app-draw-icon><span>{{ item.label }}</span></div>
+          </ng-template>
+        </p-multiSelect>
+
+      </div>
+
+      <span class="p-input-icon-left search-wrapper page-header__search relative">
+        <app-draw-icon icon="pi pi-search" class="search-icon"></app-draw-icon>
+        <input pInputText type="text" placeholder="Search RFIs..." [(ngModel)]="searchQuery" (input)="onSearch()"
+          class="search-input" pTooltip="Search by RFI title or description" tooltipPosition="bottom" />
+      </span>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════ GRID VIEW ═══════════════════════ -->
+  @if (viewMode === 'grid') {
+    @if (filteredRfis.length === 0) {
+      <div class="rfi-empty">
+        <app-draw-icon icon="pi pi-inbox"></app-draw-icon>
+        <p>No RFIs found for the selected filters.</p>
+      </div>
+    } @else {
+      <div class="rfi-grid">
+        @for (rfi of pagedRfis; track rfi.id) {
+          <div [class]="rfiCardClass(rfi)">
+
+            <p-tag [value]="statusLabel(rfi.status)" [severity]="statusSeverity(rfi.status)" class="status-tag status-tag--corner" />
+
+            <!-- Card Header: avatar (with draw-in ring on hover) + title + sub-division -->
+            <div class="card-header">
+              <div class="rfi-avatar-wrap">
+                <div class="rfi-avatar">{{ rfi.title | slice:0:1 | uppercase }}</div>
+                <svg class="rfi-avatar-ring" viewBox="0 0 52 52" width="52" height="52" aria-hidden="true">
+                  <circle pathLength="100" cx="26" cy="26" r="24" fill="none" stroke-width="2"></circle>
+                </svg>
+              </div>
+              <h3 class="rfi-card__title">{{ rfi.title }}</h3>
+              <!-- Sub-division name, or the division name for a division-level RFI -->
+              @if (showHolderLabel) {
+                <p class="rfi-card__dept">
+                  <app-draw-icon icon="pi pi-sitemap"></app-draw-icon>
+                  {{ rfi.subDivisionLabel || rfi.divisionName }}
+                </p>
+              }
+            </div>
+
+            <!-- Info Grid: Due Date + Questions + RFI Basis -->
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="info-icon"><app-draw-icon icon="pi pi-calendar"></app-draw-icon></span>
+                <div class="info-content">
+                  <span class="info-label">Due Date</span>
+                  <span class="info-value">{{ rfi.dueDate | date:'dd MMM yyyy' }}</span>
+                </div>
+              </div>
+              <div class="info-item">
+                <span class="info-icon"><app-draw-icon icon="pi pi-list-check"></app-draw-icon></span>
+                <div class="info-content">
+                  <span class="info-label">Questions</span>
+                  <span class="info-value">{{ rfi.questionnaire?.length ?? 0 }}</span>
+                </div>
+              </div>
+              <!-- RFI Basis: whether the RFI's scope sits directly under a division or under a sub-division -->
+              <div class="info-item">
+                <span class="info-icon"><app-draw-icon icon="pi pi-sitemap"></app-draw-icon></span>
+                <div class="info-content">
+                  <span class="info-label">RFI Basis</span>
+                  <span class="info-value">{{ rfi.subDivisionLabel ? 'Sub-Division' : 'Division' }}</span>
+                </div>
+              </div>
+            </div>
+
+            <p class="rfi-card__desc">{{ truncate(rfi.description, 100) }}</p>
+
+            <!-- Scope / Sub-scope tags -->
+            <div class="tags-row">
+              @if (rfi.scopeLabel) {
+                <span class="rfi-badge rfi-badge--scope">
+                  <app-draw-icon icon="pi pi-map-marker"></app-draw-icon>
+                  {{ rfi.scopeLabel }}
+                </span>
+              }
+              @if (rfi.subScopeLabel) {
+                <span class="rfi-badge rfi-badge--subscope">
+                  <app-draw-icon icon="pi pi-tag"></app-draw-icon>
+                  {{ rfi.subScopeLabel }}
+                </span>
+              }
+            </div>
+
+            <!-- Card Footer -->
+            <div class="card-footer">
+              <div class="footer-actions-row">
+                <button type="button" class="btn-view" (click)="viewRfi(rfi)">
+                  View &amp; Respond
+                </button>
+              </div>
+            </div>
+
+          </div>
+        }
+      </div>
+    }
+  }
+
+  <!-- ═══════════════════════ LIST VIEW (row cards) ═══════════════════════ -->
+  @if (viewMode === 'list') {
+    @if (filteredRfis.length === 0) {
+      <div class="rfi-empty">
+        <app-draw-icon icon="pi pi-inbox"></app-draw-icon>
+        <p>No RFIs found for the selected filters.</p>
+      </div>
+    } @else {
+      <div class="rfi-list" [class.rfi-list--cfo]="showHolderLabel">
+        <div class="list-header">
+          <span class="list-header__cell col-title">RFI Title</span>
+          @if (showHolderLabel) {
+            <span class="list-header__cell col-dept">Division / Sub-Division</span>
+          }
+          <span class="list-header__cell col-scope">Scope</span>
+          <span class="list-header__cell col-qs">Questions</span>
+          <span class="list-header__cell col-status">Status</span>
+          <span class="list-header__cell col-due">Due Date</span>
+          <span class="list-header__cell col-actions">Actions</span>
+        </div>
+
+        @for (rfi of pagedRfis; track rfi.id) {
+          <article class="rfi-row">
+
+            <div class="col-title">
+              <div class="cell-title">
+                <div class="cell-title__bar" [ngClass]="'cell-title__bar--' + rfi.status"></div>
+                <span class="cell-title__text">{{ rfi.title }}</span>
+              </div>
+            </div>
+
+            @if (showHolderLabel) {
+              <div class="col-dept">
+                <span class="rfi-badge rfi-badge--dept">
+                  <app-draw-icon icon="pi pi-sitemap"></app-draw-icon>
+                  {{ rfi.subDivisionLabel || rfi.divisionName }}
+                </span>
+              </div>
+            }
+
+            <div class="col-scope">
+              <div class="cell-tags">
+                @if (rfi.scopeLabel) {
+                  <span class="rfi-badge rfi-badge--scope">{{ rfi.scopeLabel }}</span>
+                }
+                @if (rfi.subScopeLabel) {
+                  <span class="rfi-badge rfi-badge--subscope">{{ rfi.subScopeLabel }}</span>
+                }
+                @if (!rfi.scopeLabel && !rfi.subScopeLabel) {
+                  <span class="cell-empty">—</span>
+                }
+              </div>
+              <!-- RFI Basis: whether the RFI's scope sits directly under a division or under a sub-division -->
+              <div class="cell-basis">
+                <app-draw-icon icon="pi pi-sitemap"></app-draw-icon>
+                <span>RFI Basis : <strong>{{ rfi.subDivisionLabel ? 'Sub-Division' : 'Division' }}</strong></span>
+              </div>
+            </div>
+
+            <div class="col-qs">
+              <div class="cell-due">
+                <app-draw-icon icon="pi pi-list-check"></app-draw-icon>
+                <span>{{ rfi.questionnaire?.length ?? 0 }}</span>
+              </div>
+            </div>
+
+            <div class="col-status">
+              <p-tag [value]="statusLabel(rfi.status)" [severity]="statusSeverity(rfi.status)" class="rfi-status-tag" />
+            </div>
+
+            <div class="col-due">
+              <div class="cell-due">
+                <app-draw-icon icon="pi pi-calendar"></app-draw-icon>
+                <span>{{ rfi.dueDate | date:'dd MMM yyyy' }}</span>
+              </div>
+            </div>
+
+            <div class="col-actions">
+              <div class="row-actions">
+                <button type="button" class="btn-view" (click)="viewRfi(rfi)">
+                  View &amp; Respond
+                </button>
+              </div>
+            </div>
+
+          </article>
+        }
+      </div>
+    }
+  }
+
+  <!-- Paginator -->
+  @if (filteredRfis.length > 0) {
+    <app-pagination-bar
+      [pageSize]="pageSize"
+      [totalRecords]="filteredRfis.length"
+      [currentPage]="currentPage"
+      [rowsPerPageOptions]="[6, 12, 18, 24, 40, 56]"
+      (pageChange)="onPageChange($event)"
+      (rowsChange)="onRowsChange($event)">
+    </app-pagination-bar>
+  }
+
+</div>

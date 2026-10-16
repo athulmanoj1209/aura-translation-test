@@ -1,0 +1,337 @@
+<div class="rp-page">
+
+  <!-- ========================= ERROR BANNER ======================== -->
+  <div class="error-banner" *ngIf="error()">
+    <app-draw-icon icon="pi pi-exclamation-circle" class="error-banner__icon"></app-draw-icon>
+    <span class="error-banner__text">{{ error() }}</span>
+    <button type="button" class="error-banner__retry" (click)="retryLoad()">
+      <app-draw-icon icon="pi pi-refresh"></app-draw-icon> Retry
+    </button>
+    <button type="button" class="error-banner__close" (click)="dismissError()" aria-label="Dismiss">
+      <app-draw-icon icon="pi pi-times"></app-draw-icon>
+    </button>
+  </div>
+
+  <!-- ========================= PAGE HEADER ========================= -->
+  <header class="rp-header">
+    <div class="rp-header__icon">
+      <app-draw-icon icon="pi pi-shield"></app-draw-icon>
+    </div>
+    <div class="rp-header__text">
+      <h1 class="rp-header__title">User Roles &amp; Permissions</h1>
+      <p class="rp-header__sub">Manage roles and configure module-level access controls</p>
+    </div>
+    <button type="button" class="btn btn--primary" (click)="openAddDialog()">
+      <app-draw-icon icon="pi pi-plus"></app-draw-icon> Add Role
+    </button>
+  </header>
+
+  <!-- ========================= SPLIT PANEL ========================= -->
+  <div class="rp-split" [class.rp-split--loading]="loading()">
+
+    <!-- Loading overlay -->
+    <div class="loading-overlay" *ngIf="loading()">
+      <app-draw-icon icon="pi pi-spin pi-spinner" class="loading-overlay__icon"></app-draw-icon>
+    </div>
+
+    <!-- ─── LEFT: Roles List ─────────────────────────────────────── -->
+    <aside class="roles-panel">
+      <div class="roles-panel__head">
+        <span class="roles-panel__count">{{ roles().length }} ROLES</span>
+      </div>
+
+      <ul class="role-list">
+        <li *ngFor="let role of roles(); trackBy: trackById"
+            class="role-item"
+            [class.role-item--active]="selectedId() === role.id"
+            (click)="selectRole(role.id)">
+
+          <span class="role-item__avatar" [style.background]="role.color">{{ initials(role.name) }}</span>
+
+          <div class="role-item__body">
+            <div class="role-item__name-row">
+              <span class="role-item__name">{{ role.name }}</span>
+              <span *ngIf="role.isSystem" class="badge badge--system">SYSTEM</span>
+            </div>
+            <p class="role-item__desc">{{ role.userCount }} users · {{ permCount(role) }} permissions</p>
+          </div>
+
+          <span class="role-item__count">{{ role.userCount }}</span>
+
+          <button *ngIf="!role.isSystem"
+                  type="button"
+                  class="role-item__delete"
+                  (click)="openDeleteConfirm(role.id, $event)"
+                  aria-label="Delete role">
+            <app-draw-icon icon="pi pi-trash"></app-draw-icon>
+          </button>
+        </li>
+      </ul>
+    </aside>
+
+    <!-- ─── RIGHT: Permissions Config ───────────────────────────── -->
+    <main class="perms-panel" *ngIf="selectedRole() as role">
+
+      <div class="perms-panel__head">
+        <span class="role-avatar" [style.background]="role.color">{{ initials(role.name) }}</span>
+        <div class="perms-panel__head-text">
+          <div class="perms-panel__title-row">
+            <h2 class="perms-panel__title">{{ role.name }}</h2>
+            <span *ngIf="role.isSystem" class="badge badge--system">SYSTEM</span>
+            <span *ngIf="savedId() === role.id" class="saved-badge">
+              <app-draw-icon icon="pi pi-check"></app-draw-icon> Saved
+            </span>
+          </div>
+          <p class="perms-panel__desc">{{ role.description }}</p>
+        </div>
+        <div class="perms-panel__stats">
+          <span class="stat-pill">
+            <app-draw-icon icon="pi pi-users"></app-draw-icon> {{ role.userCount }} users
+          </span>
+          <span class="stat-pill">
+            <app-draw-icon icon="pi pi-lock"></app-draw-icon> {{ permCount(role) }} of {{ totalPossiblePerms(role) }} permissions
+          </span>
+          <span class="stat-pill">
+            <app-draw-icon icon="pi pi-th-large"></app-draw-icon> {{ role.modules.length }} modules
+          </span>
+        </div>
+      </div>
+
+      <!-- Toolbar: Grant all -->
+      <div class="perms-toolbar" *ngIf="!role.isSystem">
+        <span *ngIf="allGranted()" class="grant-all-bar__tag">Full Access</span>
+        <span class="perms-toolbar__spacer"></span>
+        <button type="button"
+                class="btn btn--outline"
+                [class.toggle--indeterminate]="allGrantedIndeterminate()"
+                (click)="grantAll(!allGranted())">
+          <app-draw-icon icon="pi pi-check-square"></app-draw-icon>
+          {{ allGranted() ? 'Revoke all' : 'Grant all' }}
+        </button>
+      </div>
+
+      <!-- Permissions Matrix -->
+      <div class="perms-table-wrap">
+        <table class="perms-table">
+          <thead>
+            <tr>
+              <th class="col-module">Module</th>
+              <th class="col-all">
+                <span class="perm-th">
+                  <span class="perm-th__dot"></span>
+                  All
+                </span>
+              </th>
+
+              <!-- Dynamic permission type columns -->
+              <th *ngFor="let pt of permTypes(); let i = index; trackBy: trackByKey" class="col-perm">
+                <span class="perm-th">
+                  <span class="perm-th__dot"></span>
+                  {{ pt.label }}
+                </span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let m of role.modules; let i = index; trackBy: trackByModule">
+
+              <!-- Module name -->
+              <td class="col-module">
+                <span class="module-label">
+                  <i [class]="m.icon + ' module-label__icon'"></i>
+                  {{ m.module }}
+                </span>
+              </td>
+
+              <!-- All toggle -->
+              <td class="col-all">
+                <label class="toggle"
+                       [class.toggle--indeterminate]="isIndeterminate(m)"
+                       [class.disabled]="role.isSystem">
+                  <input type="checkbox"
+                         [checked]="allSelected(m)"
+                         [disabled]="role.isSystem"
+                         (change)="toggleAll(i)" />
+                  <span class="toggle__slider"></span>
+                </label>
+              </td>
+
+              <!-- Individual perm toggles (dynamic) -->
+              <td *ngFor="let pt of permTypes(); let j = index; trackBy: trackByKey" class="col-perm">
+                <label class="toggle" [class.disabled]="role.isSystem">
+                  <input type="checkbox"
+                         [checked]="m.perms[pt.key]"
+                         [disabled]="role.isSystem"
+                         (change)="togglePerm(i, pt.key)" />
+                  <span class="toggle__slider"></span>
+                </label>
+              </td>
+
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Footer actions -->
+      <div class="perms-panel__footer">
+        <span *ngIf="role.isSystem" class="system-note">
+          <app-draw-icon icon="pi pi-info-circle"></app-draw-icon>
+          System roles cannot be modified.
+        </span>
+        <ng-container *ngIf="!role.isSystem">
+          <span *ngIf="isDirty()" class="unsaved-note">
+            <app-draw-icon icon="pi pi-circle-fill"></app-draw-icon> Unsaved changes
+          </span>
+          <button type="button"
+                  class="btn btn--primary"
+                  [disabled]="!isDirty()"
+                  (click)="savePermissions()">
+            <app-draw-icon icon="pi pi-check"></app-draw-icon> Save Changes
+          </button>
+        </ng-container>
+      </div>
+
+    </main>
+
+  </div><!-- /rp-split -->
+
+  <!-- ==================== ADD ROLE DIALOG ========================= -->
+  <p-dialog header="Add New Role"
+            [visible]="showAddDialog()"
+            (visibleChange)="$event ? null : showAddDialog.set(false)"
+            [modal]="true"
+            [draggable]="false"
+            [resizable]="false"
+            [closable]="true"
+            [style]="{ width: '460px' }"
+            styleClass="rp-dialog">
+
+    <div class="dialog-body">
+
+      <div class="field">
+        <label class="field__label">Role Name <span class="required">*</span></label>
+        <input pInputText type="text"
+               [(ngModel)]="newName"
+               placeholder="e.g. Compliance Officer"
+               class="field__input" />
+      </div>
+
+      <div class="field">
+        <label class="field__label">Description</label>
+        <textarea pTextarea
+                  [(ngModel)]="newDescription"
+                  placeholder="Brief description of this role's responsibilities"
+                  rows="3"
+                  class="field__input field__input--textarea"></textarea>
+      </div>
+
+      <div class="field">
+        <label class="field__label">Copy permissions from</label>
+        <p-select [(ngModel)]="newCloneFrom"
+                  [options]="cloneOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Start from scratch (Read Only defaults)"
+                  styleClass="field__select"></p-select>
+      </div>
+
+    </div>
+
+    <ng-template pTemplate="footer">
+      <button type="button" class="btn btn--ghost" (click)="showAddDialog.set(false)">
+        Cancel
+      </button>
+      <button type="button"
+              class="btn btn--primary"
+              [disabled]="!newName.trim()"
+              (click)="confirmAdd()">
+        <app-draw-icon icon="pi pi-plus"></app-draw-icon> Create Role
+      </button>
+    </ng-template>
+  </p-dialog>
+
+  <!-- =================== DELETE CONFIRM DIALOG ==================== -->
+  <p-dialog header="Delete Role"
+            [visible]="showDeleteConfirm()"
+            (visibleChange)="$event ? null : showDeleteConfirm.set(false)"
+            [modal]="true"
+            [draggable]="false"
+            [resizable]="false"
+            [closable]="false"
+            [style]="{ width: '400px' }"
+            styleClass="rp-dialog">
+
+    <div class="confirm-body">
+      <app-draw-icon icon="pi pi-exclamation-triangle" class="confirm-body__icon"></app-draw-icon>
+      <p class="confirm-body__text">
+        Are you sure you want to delete <strong>{{ pendingDeleteName }}</strong>?
+        This action cannot be undone.
+      </p>
+    </div>
+
+    <ng-template pTemplate="footer">
+      <button type="button" class="btn btn--ghost" (click)="showDeleteConfirm.set(false)">
+        Cancel
+      </button>
+      <button type="button" class="btn btn--danger" (click)="confirmDelete()">
+        <app-draw-icon icon="pi pi-trash"></app-draw-icon> Delete
+      </button>
+    </ng-template>
+  </p-dialog>
+
+  <!-- ================ ADD PERMISSION TYPE DIALOG ================== -->
+  <p-dialog header="Add Permission Type"
+            [visible]="showAddPermDialog()"
+            (visibleChange)="$event ? null : showAddPermDialog.set(false)"
+            [modal]="true"
+            [draggable]="false"
+            [resizable]="false"
+            [closable]="true"
+            [style]="{ width: '420px' }"
+            styleClass="rp-dialog">
+
+    <div class="dialog-body">
+      <div class="field">
+        <label class="field__label">Permission Name <span class="required">*</span></label>
+        <input pInputText type="text"
+               [(ngModel)]="newPermLabel"
+               placeholder="e.g. Approver, Reviewer L4, Sign-off…"
+               class="field__input"
+               (keydown.enter)="confirmAddPerm()" />
+        <span class="field__hint">
+          A column will be added to every module row for all roles.
+        </span>
+      </div>
+
+      <!-- Preview of existing custom columns -->
+      <div class="perm-type-list" *ngIf="permTypes().length > 4">
+        <span class="perm-type-list__label">Custom columns already added:</span>
+        <div class="perm-type-list__chips">
+          <span *ngFor="let pt of permTypes()"
+                class="perm-type-chip"
+                [class.perm-type-chip--custom]="!pt.isCore">
+            {{ pt.label }}
+            <button *ngIf="!pt.isCore"
+                    type="button"
+                    class="perm-type-chip__remove"
+                    (click)="removePermType(pt.key)"
+                    title="Remove">×</button>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <ng-template pTemplate="footer">
+      <button type="button" class="btn btn--ghost" (click)="showAddPermDialog.set(false)">
+        Cancel
+      </button>
+      <button type="button"
+              class="btn btn--primary"
+              [disabled]="!newPermLabel.trim()"
+              (click)="confirmAddPerm()">
+        <app-draw-icon icon="pi pi-plus"></app-draw-icon> Add Column
+      </button>
+    </ng-template>
+  </p-dialog>
+
+</div>

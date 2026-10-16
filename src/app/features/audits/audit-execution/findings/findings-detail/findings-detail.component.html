@@ -1,0 +1,264 @@
+<section class="finding-detail">
+
+  <!-- =============================== HEADER =============================== -->
+  <header class="detail-header">
+    <button type="button" class="back-btn" (click)="goBack()" aria-label="Back">
+      <app-draw-icon icon="pi pi-arrow-left"></app-draw-icon>
+    </button>
+    <div class="detail-header__text">
+      <h1 class="detail-header__title">Follow-up Audit Management</h1>
+      <p class="detail-header__subtitle">Track and monitor remediation of audit findings</p>
+    </div>
+  </header>
+
+  <!-- ============================== LOADING / NOT FOUND ============================== -->
+  <div *ngIf="loading()" class="state-card">
+    <app-draw-icon icon="pi pi-spin pi-spinner"></app-draw-icon>
+    <span>Loading finding…</span>
+  </div>
+
+  <div *ngIf="!loading() && notFound()" class="state-card state-card--error">
+    <app-draw-icon icon="pi pi-exclamation-triangle"></app-draw-icon>
+    <span>We couldn't find that finding. It may have been removed.</span>
+  </div>
+
+  <!-- =============================== CONTENT =============================== -->
+  <ng-container *ngIf="finding() as f">
+
+    <!-- Summary card -->
+    <article class="summary-card">
+      <div class="summary-card__title-row">
+        <h2 class="summary-card__title">{{ f.title }}</h2>
+        <span class="chip chip--red">{{ severityLabel(f.severity) }} Severity</span>
+        <span class="chip chip--red">{{ statusLabel(f.status) }}</span>
+      </div>
+
+      <div class="meta-grid">
+        <div class="meta-field">
+          <span class="meta-field__icon"><app-draw-icon icon="pi pi-arrow-right"></app-draw-icon></span>
+          <div class="meta-field__text">
+            <span class="meta-field__label">Sub-Division</span>
+            <span class="meta-field__value">{{ f.subDivision }}</span>
+          </div>
+        </div>
+
+        <div class="meta-field" *ngIf="f.responsibleOwner">
+          <span class="meta-field__icon"><app-draw-icon icon="pi pi-arrow-right"></app-draw-icon></span>
+          <div class="meta-field__text">
+            <span class="meta-field__label">Responsible Owner</span>
+            <span class="meta-field__value">{{ f.responsibleOwner }}</span>
+          </div>
+        </div>
+
+        <div class="meta-field" *ngIf="f.assignedAuditor as auditor">
+          <span class="meta-field__icon"><app-draw-icon icon="pi pi-arrow-right"></app-draw-icon></span>
+          <div class="meta-field__text">
+            <span class="meta-field__label">Assigned Auditor</span>
+            <span class="meta-field__value">{{ auditor.fullName }}</span>
+          </div>
+        </div>
+
+        <div class="meta-field">
+          <span class="meta-field__icon"><app-draw-icon icon="pi pi-arrow-right"></app-draw-icon></span>
+          <div class="meta-field__text">
+            <span class="meta-field__label">Due Date</span>
+            <span class="meta-field__value">{{ f.dueDate | date:'MMM d, y' }}</span>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- Tabs -->
+    <nav class="tabs" role="tablist" aria-label="Finding sections">
+      <button type="button" class="tabs__item"
+              [class.is-active]="tab() === 'overview'"
+              (click)="setTab('overview')"
+              role="tab" [attr.aria-selected]="tab() === 'overview'">
+        Overview
+      </button>
+      <button type="button" class="tabs__item"
+              [class.is-active]="tab() === 'evidence'"
+              (click)="setTab('evidence')"
+              role="tab" [attr.aria-selected]="tab() === 'evidence'">
+        Evidence ({{ f.evidenceCount ?? 0 }})
+      </button>
+      <button type="button" class="tabs__item"
+              [class.is-active]="tab() === 'history'"
+              (click)="setTab('history')"
+              role="tab" [attr.aria-selected]="tab() === 'history'">
+        History
+      </button>
+      <button type="button" class="tabs__item"
+              [class.is-active]="tab() === 'escalation'"
+              (click)="setTab('escalation')"
+              role="tab" [attr.aria-selected]="tab() === 'escalation'">
+        Escalation ({{ f.escalationCount ?? 0 }})
+      </button>
+    </nav>
+
+    <!-- ========================= OVERVIEW TAB ========================= -->
+    <ng-container *ngIf="tab() === 'overview'">
+
+      <article class="section-card">
+        <h3 class="section-card__title">Finding Description</h3>
+        <p class="section-card__body">{{ f.description || '—' }}</p>
+      </article>
+
+      <article class="section-card">
+        <h3 class="section-card__title">Required Action</h3>
+        <p class="section-card__body">{{ f.requiredAction || '—' }}</p>
+      </article>
+
+      <article class="section-card">
+        <h3 class="section-card__title">Risk Assessment</h3>
+        <div class="meta-row">
+          <div class="meta-field" *ngIf="f.linkedScope">
+            <span class="meta-field__icon"><app-draw-icon icon="pi pi-arrow-right"></app-draw-icon></span>
+            <div class="meta-field__text">
+              <span class="meta-field__label">Linked Scope</span>
+              <span class="meta-field__value">{{ f.linkedScope }}</span>
+            </div>
+          </div>
+          <div class="meta-field" *ngIf="f.residualRisk">
+            <span class="meta-field__icon"><app-draw-icon icon="pi pi-arrow-right"></app-draw-icon></span>
+            <div class="meta-field__text">
+              <span class="meta-field__label">Residual Risk After Remediation</span>
+              <span class="meta-field__value">{{ severityLabel(f.residualRisk) }}</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="section-card">
+        <h3 class="section-card__title">Timeline</h3>
+        <div class="meta-field" *ngIf="f.createdAt">
+          <span class="meta-field__icon"><app-draw-icon icon="pi pi-arrow-right"></app-draw-icon></span>
+          <div class="meta-field__text">
+            <span class="meta-field__label">Created</span>
+            <span class="meta-field__value">
+              {{ f.createdAt | date:'MMM d y hh:mm a' }}
+            </span>
+          </div>
+        </div>
+      </article>
+
+    </ng-container>
+
+    <!-- ========================= evidence TABS (placeholders) ========================= -->
+     <article *ngIf="tab() === 'evidence'" class="section-card">
+      <h3 class="section-card__title">Evidence</h3>
+      <p class="section-card__subtitle">Supporting documentation attached to this finding</p>
+
+      <!-- Empty state -->
+      <div *ngIf="(f.evidence?.length ?? 0) === 0" class="evidence-empty">
+        <app-draw-icon icon="pi pi-folder-open"></app-draw-icon>
+        <span>No evidence files have been attached yet.</span>
+      </div>
+
+      <!-- Evidence list -->
+      <div *ngIf="(f.evidence?.length ?? 0) > 0" class="evidence-list">
+        <article class="evidence-item" *ngFor="let ev of f.evidence">
+          <div class="evidence-item__icon">
+            <i class="pi" [ngClass]="iconForFile(ev.fileType)"></i>
+          </div>
+
+          <div class="evidence-item__body">
+            <h4 class="evidence-item__title">{{ ev.title }}</h4>
+            <p class="evidence-item__desc" *ngIf="ev.description">{{ ev.description }}</p>
+            <p class="evidence-item__meta">
+              {{ ev.fileName }} · {{ formatFileSize(ev.fileSize) }}
+              <ng-container *ngIf="ev.uploadedBy"> · Uploaded by {{ ev.uploadedBy }}</ng-container>
+              <ng-container *ngIf="ev.uploadedAt"> · {{ ev.uploadedAt | date:"MMM d, y" }}</ng-container>
+            </p>
+          </div>
+
+          <a [href]="ev.fileUrl"
+             [download]="ev.fileName"
+             class="evidence-action evidence-action--download" pTooltip="Download" tooltipPosition="top"
+             tooltipStyleClass="download-tooltip"   aria-label="Download evidence">
+            <app-draw-icon icon="pi pi-download"></app-draw-icon>
+          </a>
+        </article>
+      </div>
+    </article>
+
+
+    <!-- ============================ HISTORY TAB ============================ -->
+    <article *ngIf="tab() === 'history'" class="section-card">
+      <h3 class="section-card__title">Status History</h3>
+      <p class="section-card__subtitle">Complete audit trail of status changes</p>
+
+      <div class="history-list" *ngIf="(f.statusHistory?.length ?? 0) > 0; else noHistory">
+        <div class="history-entry" *ngFor="let h of f.statusHistory">
+          <div class="history-entry__head">
+            <span class="chip-outline" [ngClass]="'chip-outline--' + h.status">
+              {{ statusLabel(h.status) }}
+            </span>
+            <span class="history-entry__time">{{ h.timestamp | date:"MMM d, y HH:mm" }}</span>
+          </div>
+          <p class="history-entry__by">Updated by {{ h.updatedBy }}</p>
+          <div class="history-entry__note" *ngIf="h.note">{{ h.note }}</div>
+        </div>
+      </div>
+
+      <ng-template #noHistory>
+        <p class="section-card__body section-card__body--muted">No activity recorded yet.</p>
+      </ng-template>
+    </article>
+
+    <!-- ========================= ESCALATION TAB ========================== -->
+    <ng-container *ngIf="tab() === 'escalation'">
+
+      <!-- Escalation History -->
+      <article class="section-card">
+        <h3 class="section-card__title">Escalation History</h3>
+        <p class="section-card__subtitle">SLA breach notifications and escalations</p>
+
+        <div class="esc-list" *ngIf="(f.escalations?.length ?? 0) > 0; else noEsc">
+          <div class="esc-entry" *ngFor="let e of f.escalations">
+            <div class="esc-entry__head">
+              <app-draw-icon icon="pi pi-exclamation-triangle" class="esc-entry__icon"></app-draw-icon>
+              <span class="chip chip--red">{{ e.toRole }}</span>
+              <span class="esc-entry__time">{{ e.timestamp | date:"MMM d, y HH:mm" }}</span>
+            </div>
+            <p class="esc-entry__to">Escalated to {{ e.toPerson }}</p>
+            <p *ngIf="e.daysOverdue !== undefined" class="esc-entry__overdue">
+              {{ e.daysOverdue }} days overdue
+            </p>
+            <div *ngIf="e.message" class="esc-entry__msg">{{ e.message }}</div>
+          </div>
+        </div>
+
+        <ng-template #noEsc>
+          <p class="section-card__body section-card__body--muted">No escalations on file.</p>
+        </ng-template>
+      </article>
+
+      <!-- Escalation Policy -->
+      <article class="section-card">
+        <h3 class="section-card__title">Escalation Policy</h3>
+        <p class="section-card__subtitle">Automatic escalation rules for overdue findings</p>
+
+        <ul class="policy-list">
+          <li class="policy-rule" *ngFor="let r of policy">
+            <span class="policy-pill" [ngClass]="'policy-pill--' + r.tier">{{ r.trigger }}</span>
+            <span class="policy-rule__text">{{ r.description }}</span>
+          </li>
+        </ul>
+      </article>
+
+      <!-- Pagination -->
+      <div class="pagination">
+        <span class="pagination__info">Showing 1 to 10 of 12 entries</span>
+        <div class="pagination__nav">
+          <button type="button" class="pagination__btn" disabled>Previous</button>
+          <button type="button" class="pagination__btn is-active">1</button>
+          <button type="button" class="pagination__btn">2</button>
+          <button type="button" class="pagination__btn">Next</button>
+        </div>
+      </div>
+
+    </ng-container>
+
+  </ng-container>
+</section>

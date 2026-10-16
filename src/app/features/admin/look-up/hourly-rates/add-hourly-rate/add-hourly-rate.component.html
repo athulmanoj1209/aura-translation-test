@@ -1,0 +1,97 @@
+<div class="add-dialog-root">
+
+  <!-- Custom Header -->
+  <div class="add-dh">
+    <div class="add-dh__icon"><app-draw-icon icon="pi pi-dollar"></app-draw-icon></div>
+    <div class="add-dh__text">
+      <span class="add-dh__title">{{ mode === 'edit' ? 'Edit Hourly Rate' : 'Add Hourly Rate' }}</span>
+      <span class="add-dh__subtitle">{{ mode === 'edit' ? 'Update the hourly rate details' : 'Create a new staff hourly rate' }}</span>
+    </div>
+    <button class="add-dh__close" type="button" (click)="cancel()"><app-draw-icon icon="pi pi-times"></app-draw-icon></button>
+  </div>
+
+  <!-- Body -->
+  <div class="add-db">
+    <form [formGroup]="entryForm" autocomplete="off">
+
+      <!-- Rate field -->
+      <div class="form-field">
+        <label class="field-label" for="rateAmount">Hourly Rate<span class="req-star">*</span></label>
+        <p-inputnumber
+          id="rateAmount"
+          formControlName="rate"
+          placeholder="e.g. 150"
+          [class.input-error]="rateInvalid"
+          styleClass="rate-number-input">
+        </p-inputnumber>
+        <div class="field-meta">
+          <span>
+            @if (rateInvalid) {
+              <small class="field-error">
+                @if (rateControl.errors?.['required']) { Hourly rate is required. }
+                @else if (rateControl.errors?.['min']) { Rate must be a positive amount. }
+              </small>
+            }
+          </span>
+        </div>
+      </div>
+
+      <!-- Status toggle -->
+      <div class="status-row">
+        <div class="status-row__text">
+          <span class="status-row__label">Status</span>
+          <span class="status-row__hint">
+            {{ statusControl.value ? 'Active — visible in dropdowns and reports.' : 'Inactive — hidden from dropdowns and reports.' }}
+          </span>
+        </div>
+        <p-toggleswitch formControlName="statusActive"></p-toggleswitch>
+      </div>
+
+      <!-- Add to List (add mode only) -->
+      @if (mode === 'add') {
+        <div class="add-btn-row">
+          <p-button label="+ Add to List" styleClass="btn-add-list"
+            [disabled]="entryForm.invalid" (onClick)="addEntry()"></p-button>
+        </div>
+      }
+
+    </form>
+
+    <!-- Pending list preview (add mode) -->
+    @if (mode === 'add' && addedEntries.length > 0) {
+      <p-divider styleClass="preview-divider"></p-divider>
+      <div class="preview-section">
+        <p class="preview-heading"><app-draw-icon icon="pi pi-list-check"></app-draw-icon> Pending Submission <span class="preview-count">{{ addedEntries.length }}</span></p>
+        <div class="preview-list">
+          @for (entry of addedEntries; track $index; let i = $index) {
+            <div class="preview-item">
+              <span class="preview-item__idx">{{ i + 1 }}</span>
+              <div class="preview-item__body">
+                <span class="preview-item__name">$ {{ entry.rate | number:'1.2-2' }} / hr</span>
+              </div>
+              <span class="preview-status-pill" [class.active]="entry.status === 'active'">
+                {{ entry.status === 'active' ? 'Active' : 'Inactive' }}
+              </span>
+              <button type="button" class="btn-remove" (click)="removeEntry(i)" pTooltip="Remove" tooltipPosition="top">
+                <app-draw-icon icon="pi pi-times"></app-draw-icon>
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Footer -->
+  <div class="add-df">
+    <p-button label="Cancel" [text]="true" severity="secondary" (onClick)="cancel()"></p-button>
+    <p-button
+      [label]="mode === 'edit' ? 'Save Changes' : 'Add Hourly Rate'"
+      icon="pi pi-check"
+      styleClass="btn-submit"
+      [disabled]="mode === 'edit' ? entryForm.invalid : (entryForm.invalid && addedEntries.length === 0)"
+      (onClick)="submit()">
+    </p-button>
+  </div>
+
+</div>

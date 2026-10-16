@@ -1,0 +1,26 @@
+<ng-container *ngIf="auditors$().length > 0 || reviewers$().length > 0">
+
+  <app-assurance-engagers
+    *ngIf="auditors$().length > 0"
+    variant="auditor"
+    title="Preparers"
+    [subtitle]="auditorSubtitle$()"
+    [persons]="auditorPersons()"
+    [showScopeExpansion]="showScopeExpansion$()">
+  </app-assurance-engagers>
+
+  <p-divider
+    *ngIf="auditors$().length > 0 && reviewers$().length > 0"
+    styleClass="pers-divider">
+  </p-divider>
+
+  <app-assurance-engagers
+    *ngIf="reviewers$().length > 0"
+    variant="reviewer"
+    title="Reviewers"
+    [subtitle]="reviewerSubtitle$()"
+    [persons]="reviewerPersons()"
+    [showScopeExpansion]="showScopeExpansion$()">
+  </app-assurance-engagers>
+
+</ng-container>

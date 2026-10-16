@@ -1,0 +1,106 @@
+<div class="add-dialog-root">
+
+  <!-- Custom Header -->
+  <div class="add-dh">
+    <div class="add-dh__icon"><app-draw-icon icon="pi pi-id-card"></app-draw-icon></div>
+    <div class="add-dh__text">
+      <span class="add-dh__title">{{ mode === 'edit' ? 'Edit Risk Owner Role' : 'Add Risk Owner Role' }}</span>
+      <span class="add-dh__subtitle">{{ mode === 'edit' ? 'Update the risk owner role details' : 'Create a new risk owner role' }}</span>
+    </div>
+    <button class="add-dh__close" type="button" (click)="cancel()"><app-draw-icon icon="pi pi-times"></app-draw-icon></button>
+  </div>
+
+  <!-- Body -->
+  <div class="add-db">
+    <form [formGroup]="entryForm" autocomplete="off">
+
+      <!-- Name field -->
+      <div class="form-field">
+        <label class="field-label" for="ownerName">Risk Owner Role <span class="req-star">*</span></label>
+        <input pInputText id="ownerName" formControlName="name" placeholder="e.g. Chief Risk Officer, Department Head"
+          class="field-input" [class.input-error]="nameInvalid" maxlength="100" />
+        <div class="field-meta">
+          <span>
+            @if (nameInvalid) {
+              <small class="field-error">
+                @if (nameControl.errors?.['required']) { Risk owner role is required. }
+                @else if (nameControl.errors?.['minlength']) { Minimum 2 characters required. }
+              </small>
+            }
+          </span>
+          <span class="char-count">{{ nameControl.value?.length || 0 }}/100</span>
+        </div>
+      </div>
+
+      <!-- Description field -->
+      <div class="form-field">
+        <label class="field-label" for="ownerDesc">Description <span class="optional-tag">(optional)</span></label>
+        <textarea pTextarea id="ownerDesc" formControlName="description"
+          placeholder="Brief description of this risk owner role..." [rows]="3"
+          class="field-textarea" maxlength="500"></textarea>
+        <div class="field-meta">
+          <span></span>
+          <span class="char-count">{{ descControl.value?.length || 0 }}/500</span>
+        </div>
+      </div>
+
+      <!-- Status toggle -->
+      <div class="status-row">
+        <div class="status-row__text">
+          <span class="status-row__label">Status</span>
+          <span class="status-row__hint">
+            {{ statusControl.value ? 'Active — visible in dropdowns and reports.' : 'Inactive — hidden from dropdowns and reports.' }}
+          </span>
+        </div>
+        <p-toggleswitch formControlName="statusActive"></p-toggleswitch>
+      </div>
+
+      <!-- Add to List (add mode only) -->
+      @if (mode === 'add') {
+        <div class="add-btn-row">
+          <p-button label="+ Add to List" styleClass="btn-add-list"
+            [disabled]="entryForm.invalid" (onClick)="addOwner()"></p-button>
+        </div>
+      }
+
+    </form>
+
+    <!-- Pending list preview (add mode) -->
+    @if (mode === 'add' && addedOwners.length > 0) {
+      <p-divider styleClass="preview-divider"></p-divider>
+      <div class="preview-section">
+        <p class="preview-heading"><app-draw-icon icon="pi pi-list-check"></app-draw-icon> Pending Submission <span class="preview-count">{{ addedOwners.length }}</span></p>
+        <div class="preview-list">
+          @for (owner of addedOwners; track $index; let i = $index) {
+            <div class="preview-item">
+              <span class="preview-item__idx">{{ i + 1 }}</span>
+              <div class="preview-item__body">
+                <span class="preview-item__name">{{ owner.name }}</span>
+                @if (owner.description) { <span class="preview-item__desc">{{ owner.description }}</span> }
+              </div>
+              <span class="preview-status-pill" [class.active]="owner.status === 'active'">
+                {{ owner.status === 'active' ? 'Active' : 'Inactive' }}
+              </span>
+              <button type="button" class="btn-remove" (click)="removeOwner(i)" pTooltip="Remove" tooltipPosition="top">
+                <app-draw-icon icon="pi pi-times"></app-draw-icon>
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Footer -->
+  <div class="add-df">
+    <p-button label="Cancel" [text]="true" severity="secondary" (onClick)="cancel()"></p-button>
+    <p-button
+      [label]="mode === 'edit' ? 'Save Changes' : 'Add Risk Owner Role'"
+      icon="pi pi-check"
+      styleClass="btn-submit"
+      [disabled]="mode === 'edit' ? entryForm.invalid : (entryForm.invalid && addedOwners.length === 0)"
+      (onClick)="submit()">
+    </p-button>
+  </div>
+
+</div>

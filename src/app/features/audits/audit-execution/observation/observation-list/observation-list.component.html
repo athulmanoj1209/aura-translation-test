@@ -1,0 +1,310 @@
+<section class="obs-page">
+
+  <!-- PAGE HEADER -->
+  <header class="page-header">
+    <div class="page-header__text">
+      <h1 class="page-header__title">Observations</h1>
+      <p class="page-header__subtitle">Audit observations raised from findings and evidence</p>
+    </div>
+    <div class="page-header__actions">
+      <p-button label="+ New Observation" styleClass="btn-add" (onClick)="openAdd()" type="button"></p-button>
+      <div class="view-toggle" role="group">
+        <button type="button" class="view-toggle__btn" [class.is-active]="viewMode() === 'list'"
+                (click)="setView('list')" pTooltip="List view" tooltipPosition="top"><app-draw-icon icon="pi pi-list"></app-draw-icon></button>
+        <button type="button" class="view-toggle__btn" [class.is-active]="viewMode() === 'grid'"
+                (click)="setView('grid')" pTooltip="Grid view" tooltipPosition="top"><app-draw-icon icon="pi pi-th-large"></app-draw-icon></button>
+      </div>
+    </div>
+  </header>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+
+    <!-- Filter button + floating panel -->
+    <div class="filter-wrap" (click)="$event.stopPropagation()">
+      <button type="button" class="filters-btn" [class.is-active]="showFilter()"
+              (click)="toggleFilter($event)">
+        <app-draw-icon icon="pi pi-sliders-h"></app-draw-icon> Filters
+        <span *ngIf="hasFilters()" class="filters-btn__badge"></span>
+      </button>
+
+      <!-- Floating filter panel -->
+      <div *ngIf="showFilter()" class="filter-panel" (click)="onFilterPanelClick($event)">
+
+        <div class="filter-panel__header">
+          <app-draw-icon icon="pi pi-sliders-h"></app-draw-icon>
+          <span>Filters</span>
+          <button type="button" class="filter-panel__close" (click)="showFilter.set(false)">
+            <app-draw-icon icon="pi pi-times"></app-draw-icon>
+          </button>
+        </div>
+
+        <div class="filter-panel__body">
+
+          <!-- Row 1: Risk Rating + Status -->
+          <div class="filter-panel__row">
+            <div class="filter-panel__field">
+              <label>RISK RATING</label>
+              <select [ngModel]="draft().riskRating" (ngModelChange)="setDraft('riskRating', $event)">
+                <option value="">All ratings</option>
+                <option *ngFor="let o of ratingOptions" [value]="o.value">{{ o.label }}</option>
+              </select>
+            </div>
+            <div class="filter-panel__field">
+              <label>STATUS</label>
+              <select [ngModel]="draft().status" (ngModelChange)="setDraft('status', $event)">
+                <option value="">All statuses</option>
+                <option *ngFor="let o of statusOptions" [value]="o.value">{{ o.label }}</option>
+              </select>
+            </div>
+          </div>
+ <!-- Row 3: Company + Division -->
+          <div class="filter-panel__row">
+            <div class="filter-panel__field">
+              <label>COMPANY</label>
+              <select [ngModel]="draft().company" (ngModelChange)="onDraftCompanyChange($event)">
+                <option value="">All companies</option>
+                <option *ngFor="let o of companyOptions()" [value]="o.value">{{ o.label }}</option>
+              </select>
+            </div>
+            <div class="filter-panel__field">
+              <label>DIVISION</label>
+              <p-multiSelect [options]="divisionOptions()" [ngModel]="draft().division" (ngModelChange)="onDraftDivisionChange($event)"
+                optionLabel="label" optionValue="value" placeholder="All divisions" display="chip"
+                [maxSelectedLabels]="1" selectedItemsLabel="{0} divisions" appendTo="body" styleClass="fp-select" panelStyleClass="filter-panel-overlay"></p-multiSelect>
+            </div>
+          </div>
+
+          <!-- Row 4: Sub-Division + Auditor -->
+          <div class="filter-panel__row">
+            <div class="filter-panel__field">
+              <label>SUB-DIVISION</label>
+              <p-multiSelect [disabled]="!subDivisionFilterVisible()" [options]="subDivisionOptions()" [ngModel]="draft().subDivision" (ngModelChange)="setDraft('subDivision', $event ?? [])"
+                [placeholder]="subDivisionFilterVisible() ? 'All sub-divisions' : 'No sub-divisions for this division'" display="chip"
+                optionLabel="label" optionValue="value"
+                [maxSelectedLabels]="1" selectedItemsLabel="{0} sub-divisions" appendTo="body" styleClass="fp-select" panelStyleClass="filter-panel-overlay"></p-multiSelect>
+            </div>
+            <div class="filter-panel__field">
+              <label>AUDITOR</label>
+              <select [ngModel]="draft().auditor" (ngModelChange)="setDraft('auditor', $event)">
+                <option value="">All auditors</option>
+                <option *ngFor="let o of auditorOptions()" [value]="o.value">{{ o.label }}</option>
+              </select>
+            </div>
+          </div>
+          <!-- Row 2: Scope (full width) -->
+          <div class="filter-panel__row">
+            <div class="filter-panel__field filter-panel__field--full">
+              <label>SCOPE</label>
+              <select [ngModel]="draft().scope" (ngModelChange)="setDraft('scope', $event)">
+                <option value="">All scopes</option>
+                <option *ngFor="let o of scopeOptions()" [value]="o.value">{{ o.label }}</option>
+              </select>
+            </div>
+          </div>
+
+         
+
+        </div>
+
+        <div class="filter-panel__footer">
+          <button type="button" class="fp-btn fp-btn--reset" (click)="resetFilters()">Reset</button>
+          <button type="button" class="fp-btn fp-btn--apply" (click)="applyFilters()">Apply filters</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Clear active filters -->
+    <button *ngIf="hasFilters()" type="button" class="toolbar__clear" (click)="clearAll()">
+      <app-draw-icon icon="pi pi-times"></app-draw-icon><span>Clear</span>
+    </button>
+
+    <!-- Search — pushed to right -->
+    <div class="toolbar__right">
+      <span class="toolbar__search">
+        <app-draw-icon icon="pi pi-search"></app-draw-icon>
+        <input pInputText type="text" [ngModel]="searchQuery()"
+               (ngModelChange)="onSearch($event)" placeholder="Search by ID, title or task…" />
+      </span>
+    </div>
+
+  </div>
+
+  <!-- ── LIST VIEW ── -->
+  <div *ngIf="viewMode() === 'list'" class="obs-card">
+    <div *ngIf="paginated().length === 0" class="obs-empty">
+      <app-draw-icon icon="pi pi-inbox"></app-draw-icon>
+      <span>No observations match your filters.</span>
+      <button *ngIf="hasFilters()" type="button" class="obs-empty__btn" (click)="clearAll()">Clear filters</button>
+    </div>
+
+    <div *ngIf="paginated().length > 0" class="obs-rows">
+      <div class="list-header">
+        <span class="list-header__cell col-id sortable" (click)="onSort('id')" [class.is-sorted]="sortColumn() === 'id'">
+          ID <i class="pi sortable__arrow" [ngClass]="sortIcon('id')"></i>
+        </span>
+        <span class="list-header__cell col-title sortable" (click)="onSort('title')" [class.is-sorted]="sortColumn() === 'title'">
+          Observation <i class="pi sortable__arrow" [ngClass]="sortIcon('title')"></i>
+        </span>
+        <span class="list-header__cell col-scope">Scope</span>
+        <span class="list-header__cell col-rating sortable" (click)="onSort('riskRating')" [class.is-sorted]="sortColumn() === 'riskRating'">
+          Risk Rating <i class="pi sortable__arrow" [ngClass]="sortIcon('riskRating')"></i>
+        </span>
+        <span class="list-header__cell col-status sortable" (click)="onSort('status')" [class.is-sorted]="sortColumn() === 'status'">
+          Status <i class="pi sortable__arrow" [ngClass]="sortIcon('status')"></i>
+        </span>
+        <span class="list-header__cell col-auditor">Auditor</span>
+        <span class="list-header__cell col-date sortable" (click)="onSort('createdDate')" [class.is-sorted]="sortColumn() === 'createdDate'">
+          Created <i class="pi sortable__arrow" [ngClass]="sortIcon('createdDate')"></i>
+        </span>
+        <span class="list-header__cell col-actions">Actions</span>
+      </div>
+
+      <article *ngFor="let o of paginated(); trackBy: trackById"
+          class="obs-row"
+          [class.obs-row--critical]="o.riskRating === 'critical'"
+          [class.obs-row--inactive]="o.isActive === false">
+        <div class="col-id"><span class="obs-id">{{ o.id }}</span></div>
+        <div class="col-title"><span class="obs-title">{{ o.title }}</span></div>
+        <div class="col-scope"><span class="scope-chip">{{ o.scope }}</span></div>
+        <div class="col-rating">
+          <span class="rating-badge" [ngClass]="'rating--' + o.riskRating">
+            {{ riskLabel(o.riskRating) }}
+          </span>
+        </div>
+        <div class="col-status">
+          <span class="status-chip" [ngClass]="'obs-status--' + o.status">
+            {{ statusLabel(o.status) }}
+          </span>
+        </div>
+        <div class="col-auditor"><span class="auditor"><app-draw-icon icon="pi pi-user"></app-draw-icon> {{ o.auditor }}</span></div>
+        <div class="col-date">
+          <span class="created-date">
+            <app-draw-icon icon="pi pi-calendar"></app-draw-icon>
+            {{ o.createdDate | date:'MMM d, y' }}
+          </span>
+        </div>
+        <div class="col-actions">
+          <div class="row-actions">
+            <button type="button" class="btn-view"
+                    (click)="openView(o)">
+              View
+            </button>
+            <button type="button" class="icon-btn"
+                    (click)="openEdit(o)" pTooltip="Edit" tooltipPosition="top">
+              <app-draw-icon icon="pi pi-pencil"></app-draw-icon>
+            </button>
+            <button type="button" class="icon-btn"
+                    [class.icon-btn--activate]="o.isActive === false"
+                    [class.icon-btn--deactivate]="o.isActive !== false"
+                    [pTooltip]="o.isActive !== false ? 'Deactivate' : 'Activate'"
+                    tooltipPosition="top"
+                    (click)="openConfirmation(o)">
+              <app-draw-icon [icon]="o.isActive !== false ? 'pi pi-ban' : 'pi pi-check-circle'"></app-draw-icon>
+            </button>
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+
+  <!-- ── GRID VIEW ── -->
+  <div *ngIf="viewMode() === 'grid'">
+    <div *ngIf="paginated().length === 0" class="obs-empty obs-empty--block">
+      <app-draw-icon icon="pi pi-inbox"></app-draw-icon><span>No observations match your filters.</span>
+    </div>
+    <div class="obs-grid">
+      <article *ngFor="let o of paginated(); trackBy: trackById"
+               class="obs-card-item"
+               [class.obs-card-item--critical]="o.riskRating === 'critical'"
+               [class.obs-card-item--inactive]="o.isActive === false">
+
+        <span class="status-chip status-tag--corner" [ngClass]="'obs-status--' + o.status">{{ statusLabel(o.status) }}</span>
+
+        <div class="card-header">
+          <div class="obs-avatar-wrap">
+            <div class="obs-badge"><app-draw-icon icon="pi pi-eye"></app-draw-icon></div>
+            <svg class="obs-avatar-ring" viewBox="0 0 52 52" width="52" height="52" aria-hidden="true">
+              <circle pathLength="100" cx="26" cy="26" r="24" fill="none" stroke-width="2"></circle>
+            </svg>
+          </div>
+          <h3 class="obs-card-item__title">{{ o.title }}</h3>
+          <span class="obs-id-sub"><app-draw-icon icon="pi pi-hashtag"></app-draw-icon>{{ o.id }}</span>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-item" pTooltip="Scope" tooltipPosition="top">
+            <span class="info-icon"><app-draw-icon icon="pi pi-sitemap"></app-draw-icon></span>
+            <div class="info-content"><span class="info-value">{{ o.scope }}</span></div>
+          </div>
+          <div class="info-item" pTooltip="Task" tooltipPosition="top">
+            <span class="info-icon"><app-draw-icon icon="pi pi-check-square"></app-draw-icon></span>
+            <div class="info-content"><span class="info-value">{{ o.taskId }}</span></div>
+          </div>
+          <div class="info-item" pTooltip="Finding" tooltipPosition="top">
+            <span class="info-icon"><app-draw-icon icon="pi pi-exclamation-triangle"></app-draw-icon></span>
+            <div class="info-content"><span class="info-value">{{ o.findingTitle }}</span></div>
+          </div>
+          <div class="info-item" pTooltip="Sub-Division" tooltipPosition="top">
+            <span class="info-icon"><app-draw-icon icon="pi pi-building"></app-draw-icon></span>
+            <div class="info-content"><span class="info-value">{{ o.subDivision }}</span></div>
+          </div>
+          <div class="info-item" pTooltip="Auditor" tooltipPosition="top">
+            <span class="info-icon"><app-draw-icon icon="pi pi-user"></app-draw-icon></span>
+            <div class="info-content"><span class="info-value">{{ o.auditor }}</span></div>
+          </div>
+        </div>
+
+        <div class="tags-row">
+          <span class="rating-badge" [ngClass]="'rating--' + o.riskRating">{{ riskLabel(o.riskRating) }}</span>
+        </div>
+
+        <footer class="card-footer">
+          <span class="company-label">
+            <app-draw-icon icon="pi pi-building"></app-draw-icon>{{ o.company }}
+          </span>
+          <div class="card-actions">
+            <div class="card-actions__icons">
+              <button type="button" class="icon-btn"
+                      (click)="openEdit(o)" pTooltip="Edit" tooltipPosition="top">
+                <app-draw-icon icon="pi pi-pencil"></app-draw-icon>
+              </button>
+              <button type="button" class="icon-btn"
+                      [class.icon-btn--activate]="o.isActive === false"
+                      [class.icon-btn--deactivate]="o.isActive !== false"
+                      [pTooltip]="o.isActive !== false ? 'Deactivate' : 'Activate'"
+                      tooltipPosition="top"
+                      (click)="openConfirmation(o)">
+                <app-draw-icon [icon]="o.isActive !== false ? 'pi pi-ban' : 'pi pi-check-circle'"></app-draw-icon>
+              </button>
+            </div>
+
+            <button type="button" class="btn-view" (click)="openView(o)">
+              View
+            </button>
+          </div>
+        </footer>
+      </article>
+    </div>
+  </div>
+
+  <!-- PAGINATION -->
+  <div *ngIf="filtered().length > 0" class="obs-pagination">
+    <span class="obs-pagination__label">{{ pageLabel() }}</span>
+    <p-paginator [first]="(currentPage() - 1) * pageSize" [rows]="pageSize"
+                 [totalRecords]="filtered().length" [showCurrentPageReport]="false"
+                 [showFirstLastIcon]="false" (onPageChange)="onPageChange($event)"
+                 styleClass="obs-paginator"></p-paginator>
+  </div>
+
+  <!-- ── Shared confirm dialog ── -->
+  <app-confirm-action-dialog
+    [visible]="displayConfirmation()"
+    [action]="confirmationAction()"
+    [itemName]="confirmationTarget()?.title ?? ''"
+    (confirmed)="confirmToggleBlocked()"
+    (cancelled)="closeConfirmation()"
+  />
+
+</section>

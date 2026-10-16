@@ -1,0 +1,176 @@
+<div class="add-audit-report">
+
+  <!-- ═══════════════════ Phase: upload form ═══════════════════ -->
+  @if (phase() === 'form') {
+    <form [formGroup]="uploadForm" (ngSubmit)="onSubmit()" class="add-audit-report__form">
+
+      <div class="add-audit-report__field">
+        <label class="add-audit-report__label">Company *</label>
+        <p-select formControlName="company" [options]="companyOptions" optionLabel="label" optionValue="value"
+          placeholder="Select company" styleClass="add-audit-report__input" [filter]="true" filterPlaceholder="Search…"
+          [showClear]="true" [invalid]="isFieldInvalid('company')" (onChange)="onCompanyChange()"></p-select>
+        @if (isFieldInvalid('company')) {
+          <small class="add-audit-report__field-error">Company is required.</small>
+        }
+      </div>
+
+      <div class="add-audit-report__field">
+        <label class="add-audit-report__label">Division *</label>
+        <p-select formControlName="division" [options]="divisionOptions" optionLabel="label" optionValue="value"
+          placeholder="Select division" styleClass="add-audit-report__input" [filter]="true" filterPlaceholder="Search…"
+          [showClear]="true" [disabled]="!uploadForm.value.company" [invalid]="isFieldInvalid('division')"
+          (onChange)="onDivisionChange()"></p-select>
+        @if (isFieldInvalid('division')) {
+          <small class="add-audit-report__field-error">Division is required.</small>
+        }
+      </div>
+
+      <div class="add-audit-report__field">
+        <label class="add-audit-report__label">Template Name *</label>
+        <input pInputText type="text" formControlName="templateName" placeholder="e.g. Internal Audit Report"
+          [invalid]="isFieldInvalid('templateName')" class="add-audit-report__input" />
+        @if (isFieldInvalid('templateName')) {
+          <small class="add-audit-report__field-error">Template name is required.</small>
+        }
+      </div>
+
+      <div class="add-audit-report__field">
+        <label class="add-audit-report__label">Template Description</label>
+        <textarea pTextarea rows="3" formControlName="templateDescription"
+          placeholder="Optional description of this template" class="add-audit-report__textarea"></textarea>
+      </div>
+
+      <div class="add-audit-report__field">
+        <label class="add-audit-report__label">Industry Type *</label>
+        <p-select formControlName="industryType" [options]="industryTypeOptions" placeholder="Select industry type"
+          styleClass="add-audit-report__input" [filter]="true" filterPlaceholder="Search…" [showClear]="true"
+          [invalid]="isFieldInvalid('industryType')"></p-select>
+        <small class="add-audit-report__hint">Auto-selected based on the division — you can still change it.</small>
+        @if (isFieldInvalid('industryType')) {
+          <small class="add-audit-report__field-error">Industry type is required.</small>
+        }
+      </div>
+
+      <div class="add-audit-report__field">
+        <label class="add-audit-report__label">Report Template File @if (mode === 'create') { * }</label>
+
+        @if (mode === 'edit' && !fileUnlocked()) {
+          <div class="add-audit-report__file-locked">
+            <app-draw-icon icon="pi pi-file"></app-draw-icon>
+            <span class="add-audit-report__file-locked-name">{{ editTemplate?.templateFileName }}</span>
+            <button type="button" class="add-audit-report__replace-btn" [disabled]="checkingUsage()"
+              (click)="attemptUnlockFile()">
+              @if (checkingUsage()) {
+                <app-draw-icon icon="pi pi-spin pi-spinner"></app-draw-icon> Checking…
+              } @else {
+                <app-draw-icon icon="pi pi-pencil"></app-draw-icon> Replace File
+              }
+            </button>
+          </div>
+        } @else {
+          <p-fileupload #fileUp mode="advanced" accept=".docx" [maxFileSize]="20971520" [auto]="false"
+            [customUpload]="true" (onSelect)="onFileSelected($event)" [showUploadButton]="false"
+            [showCancelButton]="false" styleClass="add-audit-report__fileupload">
+            <ng-template pTemplate="content">
+              <div class="add-audit-report__drop-zone">
+                <app-draw-icon icon="pi pi-cloud-upload" class="add-audit-report__drop-zone-icon"></app-draw-icon>
+                @if (selectedFile()) {
+                  <p class="add-audit-report__file-name">{{ selectedFile()!.name }}</p>
+                } @else {
+                  <p class="add-audit-report__drop-zone-title">Drag &amp; drop your .docx file here</p>
+                  <span class="add-audit-report__drop-zone-or">or</span>
+                  <button type="button" class="add-audit-report__browse-btn" (click)="fileUp.choose()">
+                    <app-draw-icon icon="pi pi-folder-open"></app-draw-icon> Browse File
+                  </button>
+                }
+              </div>
+            </ng-template>
+          </p-fileupload>
+        }
+
+        @if (fileError()) {
+          <small class="add-audit-report__field-error">{{ fileError() }}</small>
+        }
+      </div>
+
+      <div class="add-audit-report__field">
+        <label class="add-audit-report__label">Status</label>
+        <button type="button" class="status-pill"
+          [class.status-pill--active]="uploadForm.value.isActive"
+          [class.status-pill--inactive]="!uploadForm.value.isActive"
+          (click)="toggleStatus()">
+          {{ uploadForm.value.isActive ? 'Active' : 'Inactive' }}
+        </button>
+      </div>
+
+      @if (errorMessage()) {
+        <p-message severity="error" class="add-audit-report__error">{{ errorMessage() }}</p-message>
+      }
+
+      <div class="add-audit-report__actions">
+        @if (mode === 'edit') {
+          <p-button type="submit" label="Save Changes" icon="pi pi-check"></p-button>
+        } @else {
+          <p-button type="submit" label="Upload Template" icon="pi pi-upload" [loading]="uploading()"
+            [disabled]="uploading()"></p-button>
+        }
+      </div>
+    </form>
+  }
+
+  <!-- ═══════════════════ Phase: processing / SSE progress ═══════════════════ -->
+  @if (phase() === 'processing') {
+    <div class="add-audit-report__split">
+
+      <div class="add-audit-report__accepted"
+        [class.add-audit-report__accepted--success]="parsingFinished() && !parsingFailed()"
+        [class.add-audit-report__accepted--failed]="parsingFailed()">
+        <i class="pi add-audit-report__accepted-icon"
+          [class.pi-check-circle]="!parsingFailed()"
+          [class.pi-times-circle]="parsingFailed()"></i>
+        <p class="add-audit-report__accepted-message">
+          @if (!parsingFinished()) {
+            {{ accepted()?.message }}
+          } @else if (parsingFailed()) {
+            Parsing failed. Please review the errors below and re-upload the template.
+          } @else {
+            Parsing completed successfully.
+          }
+        </p>
+      </div>
+
+      <div class="add-audit-report__notifications">
+        <h3 class="add-audit-report__notifications-title">Parsing Progress</h3>
+
+        @if (sseConnectionError()) {
+          <p-message severity="warn" class="add-audit-report__connection-warning">
+            Connection to live updates was interrupted. Reconnecting…
+          </p-message>
+        }
+
+        <div class="add-audit-report__notification-list">
+          <!-- A step is only still "in progress" while it's the latest one on screen -->
+          <!-- every earlier step is implicitly done once a later notification has arrived. -->
+          @for (n of notifications(); track $index) {
+            <div class="add-audit-report__notification-card"
+              [class.add-audit-report__notification-card--completed]="n.parsingStatus === ParsingStatus.Completed || (!$last && n.parsingStatus !== ParsingStatus.Failed)"
+              [class.add-audit-report__notification-card--failed]="n.parsingStatus === ParsingStatus.Failed"
+              [class.add-audit-report__notification-card--clickable]="n.parsingStatus === ParsingStatus.Completed"
+              (click)="onNotificationClick(n)">
+              <i class="pi add-audit-report__notification-icon"
+                [class.pi-spin]="n.parsingStatus === ParsingStatus.InProgress && $last"
+                [class.pi-spinner]="n.parsingStatus === ParsingStatus.InProgress && $last"
+                [class.pi-check-circle]="n.parsingStatus === ParsingStatus.Completed || (!$last && n.parsingStatus !== ParsingStatus.Failed)"
+                [class.pi-times-circle]="n.parsingStatus === ParsingStatus.Failed"></i>
+              <span class="add-audit-report__notification-message">{{ n.message }}</span>
+            </div>
+          } @empty {
+            <p class="add-audit-report__notifications-empty">Waiting for updates…</p>
+          }
+        </div>
+      </div>
+
+    </div>
+  }
+
+</div>

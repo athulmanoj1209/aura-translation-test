@@ -1,0 +1,38 @@
+<p-dialog
+  header="Confirmation"
+  [visible]="visible"
+  (visibleChange)="$event ? null : cancelled.emit()"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [closable]="false"
+  [style]="{ width: '420px' }"
+  styleClass="confirm-dialog"
+>
+  <div class="confirm-body">
+    <app-draw-icon icon="pi pi-exclamation-triangle" class="confirm-body__icon"></app-draw-icon>
+    <span class="confirm-body__text">
+      Are you sure you want to
+      <strong>{{ action | lowercase }}</strong>
+      <strong class="confirm-body__name">{{ itemName }}</strong>?
+    </span>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <p-button
+      label="No"
+      icon="pi pi-times"
+      [text]="true"
+      severity="secondary"
+      (onClick)="cancelled.emit()"
+    />
+    <p-button
+      [label]="confirmLabel"
+      icon="pi pi-check"
+      [severity]="confirmSeverity"
+      [outlined]="true"
+      autofocus
+      (onClick)="confirmed.emit()"
+    />
+  </ng-template>
+</p-dialog>

@@ -1,0 +1,366 @@
+<p-toast position="top-right" />
+
+<!-- ══════════════════════════════════════════════
+     HEADER  (uses shared .drawer-header)
+══════════════════════════════════════════════════ -->
+<div class="drawer-header">
+  <div class="drawer-header-left">
+    <div class="drawer-icon-wrap">
+      <app-draw-icon icon="pi pi-building"></app-draw-icon>
+    </div>
+    <div class="drawer-title-block">
+      <h2 class="drawer-title">
+        {{ isEditMode() ? 'Edit Event' : 'Create New Event' }}
+      </h2>
+      <p class="drawer-subtitle">
+        {{ isEditMode()
+          ? 'Update the event details below.'
+          : 'Fill in the details to create a new audit event or meeting.' }}
+      </p>
+    </div>
+  </div>
+  <button class="close-btn" pTooltip="Close" tooltipPosition="left" (click)="cancel()">
+    <app-draw-icon icon="pi pi-times"></app-draw-icon>
+  </button>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     BODY  (uses shared .drawer-body — scrollable)
+══════════════════════════════════════════════════ -->
+<div class="drawer-body">
+  <form [formGroup]="form" novalidate autocomplete="off" class="event">
+
+    <!-- Row 1: Title | Event Type -->
+    <div class="form-grid">
+      <div class="form-field">
+        <label class="field-label">
+   Title<span class="required">*</span>
+  </label>
+
+        <input
+          pInputText
+          formControlName="title"
+          placeholder="Title"
+          maxlength="200"
+          [class.p-invalid]="invalid('title')"
+        />
+        @if (invalid('title') && form.get('title')?.errors?.['required']) {
+          <small class="error-text">Title is required.</small>
+        }
+        @if (invalid('title') && form.get('title')?.errors?.['maxlength']) {
+          <small class="error-text">Maximum 200 characters.</small>
+        }
+      </div>
+
+      <div class="form-field">
+        <label class="field-label">
+    Event Type <span class="required">*</span>
+  </label>
+        <p-select
+          formControlName="eventType"
+          [options]="eventTypeOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Event Type"
+          [class.p-invalid]="invalid('eventType')"
+        />
+        @if (invalid('eventType') && form.get('eventType')?.errors?.['required']) {
+          <small class="error-text">Event type is required.</small>
+        }
+      </div>
+    </div>
+
+    <!-- Row 2: Description -->
+    <div class="form-grid">
+      <div class="form-field form-field--full">
+        <label class="field-label">
+    Description <span class="required">*</span>
+  </label>
+        <textarea
+          pInputTextarea
+          formControlName="description"
+          rows="4"
+          maxlength="1000"
+          [autoResize]="false"
+          placeholder="Description"
+          [class.p-invalid]="invalid('description')"
+        ></textarea>
+        <div class="char-count">{{ descLen }}/1000</div>
+      </div>
+    </div>
+
+    <!-- Row 3: Start Date | Start Time -->
+    <div class="form-grid">
+      <div class="form-field">
+        <label class="field-label">
+    Start Date<span class="required">*</span>
+  </label>
+        <p-datepicker
+          formControlName="startDate"
+          placeholder="Start Date"
+          [showIcon]="true"
+          dateFormat="dd/mm/yy"
+          [class.p-invalid]="invalid('startDate')"
+        />
+        @if (invalid('startDate') && form.get('startDate')?.errors?.['required']) {
+          <small class="error-text">Start date is required.</small>
+        }
+      </div>
+
+      <div class="form-field">
+        <label class="field-label">
+    Start Time <span class="required">*</span>
+  </label>
+        <p-select
+          formControlName="startTime"
+          [options]="timeOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Start Time"
+          [filter]="true"
+          filterBy="label"
+          [class.p-invalid]="invalid('startTime')"
+        />
+        @if (invalid('startTime') && form.get('startTime')?.errors?.['required']) {
+          <small class="error-text">Start time is required.</small>
+        }
+      </div>
+    </div>
+
+    <!-- Row 4: End Date | End Time -->
+    <div class="form-grid">
+      <div class="form-field">
+        <label class="field-label">
+   End Date<span class="required">*</span>
+  </label>
+        <p-datepicker
+          formControlName="endDate"
+          placeholder="End Date"
+          [showIcon]="true"
+          dateFormat="dd/mm/yy"
+          [class.p-invalid]="invalid('endDate')"
+        />
+        @if (invalid('endDate') && form.get('endDate')?.errors?.['required']) {
+          <small class="error-text">End date is required.</small>
+        }
+        @if (groupError('endBeforeStart')) {
+          <small class="error-text">End must be after start.</small>
+        }
+      </div>
+
+      <div class="form-field">
+        <label class="field-label">
+    End Time <span class="required">*</span>
+  </label>
+        <p-select
+          formControlName="endTime"
+          [options]="timeOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="End Time"
+          [filter]="true"
+          filterBy="label"
+          [class.p-invalid]="invalid('endTime')"
+        />
+        @if (invalid('endTime') && form.get('endTime')?.errors?.['required']) {
+          <small class="error-text">End time is required.</small>
+        }
+      </div>
+    </div>
+
+    <!-- Row 5: Location Type | Location -->
+    <div class="form-grid">
+      <div class="form-field">
+        <label class="field-label">
+    Location Type <span class="required">*</span>
+  </label>
+        <p-select
+          formControlName="locationType"
+          [options]="locationTypeOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Location Type"
+          [class.p-invalid]="invalid('locationType')"
+        />
+        @if (invalid('locationType') && form.get('locationType')?.errors?.['required']) {
+          <small class="error-text">Location type is required.</small>
+        }
+      </div>
+
+      <div class="form-field">
+        <label class="field-label">
+    Location / Address <span class="required">*</span>
+  </label>
+        <input
+          pInputText
+          formControlName="locationDetail"
+          [placeholder]="form.get('locationType')?.value === LocationType.Virtual
+            ? 'Meeting link (https://…)'
+            : 'Location / Address'"
+          [class.p-invalid]="form.hasError('virtualLinkRequired') && form.get('locationDetail')?.touched"
+        />
+        @if (form.hasError('virtualLinkRequired') && form.get('locationDetail')?.touched) {
+          <small class="error-text">Virtual meeting link is required.</small>
+        }
+      </div>
+    </div>
+
+    <!-- Row 6: Organizer | Participants -->
+    <div class="form-grid">
+      <div class="form-field">
+        <label class="field-label">
+    Organizer <span class="required">*</span>
+  </label>
+   <p-select
+          formControlName="organizer"
+          [options]="organizerOptions"
+          optionLabel="name"
+          placeholder="Organizer"
+          [filter]="true"
+          filterBy="name"
+          [class.p-invalid]="invalid('organizer')"
+        />
+        @if (invalid('organizer') && form.get('organizer')?.errors?.['required']) {
+          <small class="error-text">Organizer is required.</small>
+        }
+      </div>
+
+      <div class="form-field">
+        <label class="field-label">
+    Participants <span class="required">*</span>
+  </label>
+        <p-multiSelect
+          formControlName="participants"
+          [options]="participantOptions"
+          optionLabel="name"
+          placeholder="Participants"
+          [filter]="true"
+          filterBy="name"
+          [class.p-invalid]="invalid('participants')"
+        />
+        @if (invalid('participants') && form.get('participants')?.errors?.['required']) {
+          <small class="error-text">At least one participant is required.</small>
+        }
+      </div>
+    </div>
+
+    <!-- Linked Entities heading -->
+    <p class="section-label">Linked Entities</p>
+
+    <!-- Row 7: Scope | Task -->
+    <div class="form-grid">
+     
+      <div class="form-field">
+         <label class="field-label">
+    Scope <span class="required">*</span>
+  </label>
+        <p-select
+          formControlName="linkedScope"
+          [options]="scopeOptions"
+          optionLabel="label"
+          placeholder="Scope"
+        />
+      </div>
+      <div class="form-field">
+        <label class="field-label">
+    Task <span class="required">*</span>
+  </label>
+        <p-select
+          formControlName="linkedTask"
+          [options]="taskOptions"
+          optionLabel="label"
+          placeholder="Task"
+        />
+      </div>
+    </div>
+
+    <!-- Row 8: RFI | Findings -->
+    <div class="form-grid">
+      
+      <div class="form-field">
+        <label class="field-label">
+   RFI<span class="required">*</span>
+  </label>
+        <p-select
+          formControlName="linkedRFI"
+          [options]="rfiOptions"
+          optionLabel="label"
+          placeholder="RFI"
+        />
+      </div>
+      <div class="form-field">
+        <label class="field-label">
+    Findings<span class="required">*</span>
+  </label>
+        <p-select
+          formControlName="linkedFindings"
+          [options]="findingOptions"
+          optionLabel="label"
+          placeholder="Findings"
+        />
+      </div>
+    </div>
+
+    <!-- File upload -->
+    <div class="form-grid">
+      <div class="form-field form-field--full">
+        <label class="field-label">
+    Related Documents <span class="required">*</span>
+  </label>
+        <input #fileInput type="file" class="file-input-hidden" multiple (change)="onNativeFileSelect($event)" />
+        <div
+          class="upload-zone"
+          [class.upload-zone--active]="isDragOver"
+          (click)="fileInput.click()"
+          (dragover)="$event.preventDefault(); isDragOver = true"
+          (dragleave)="isDragOver = false"
+          (drop)="onDrop($event)"
+        >
+          <app-draw-icon icon="pi pi-cloud-upload" class="upload-zone__icon"></app-draw-icon>
+          <span class="upload-zone__text">
+            <span class="upload-zone__link">Choose Files</span> or drag and drop
+          </span>
+          <span class="upload-zone__hint">PDF, Word, Excel, JPEG, PNG · Max 10 MB</span>
+        </div>
+
+        @if (uploadedFiles.length) {
+          <div class="uploaded-files">
+            @for (f of uploadedFiles; track f.name; let i = $index) {
+              <div class="file-preview">
+                <div class="file-preview__icon">
+                  <app-draw-icon icon="pi pi-file"></app-draw-icon>
+                </div>
+                <div class="file-preview__info">
+                  <span class="file-preview__name">{{ f.name }}</span>
+                  <span class="file-preview__size">{{ (f.size / 1024).toFixed(0) }} KB</span>
+                </div>
+                <button type="button" class="file-preview__remove" (click)="removeFile(i)">
+                  <app-draw-icon icon="pi pi-times"></app-draw-icon>
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+  </form>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     FOOTER  (uses shared .drawer-footer)
+══════════════════════════════════════════════════ -->
+<div class="drawer-footer">
+  <p-button
+    label="Cancel"
+    styleClass="cancel-btn"
+    [disabled]="submitting()"
+    (onClick)="cancel()"
+  />
+  <p-button
+    [label]="isEditMode() ? 'SAVE CHANGES' : 'CREATE EVENT'"
+    styleClass="submit-btn"
+    [loading]="submitting()"
+    (onClick)="submit()"
+  />
+</div>
